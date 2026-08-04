@@ -1,0 +1,16 @@
+{
+  "short_name": "Xé Túi Mù",
+  "name": "Xé Túi Mù Vô Tri Game",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#181824",
+  "theme_color": "#181824",
+  "display": "standalone",
+  "orientation": "portrait"
+}

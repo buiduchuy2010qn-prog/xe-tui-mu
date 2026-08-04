@@ -1,13 +1,14 @@
 {
   "name": "xe_tui_mu_web",
   "private": true,
-  "version": "0.0.0",
+  "version": "2.5.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "simulate-drops": "node scripts/simulate-drops.js"
   },
   "dependencies": {
     "react": "^19.2.8",

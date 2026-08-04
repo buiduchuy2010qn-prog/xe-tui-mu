@@ -3,9 +3,13 @@ export const BAGS = [
     id: 'trash_bag',
     name: 'Túi Rác Bí Ẩn',
     cost: 10,
+    minLevel: 1,
+    expGain: 10,
     desc: 'Chủ yếu rơi vật phẩm thường. Hơi nhàu rách nhưng bí ẩn!',
     ratesDesc: 'Common 80% | Rare 17% | Epic 3%',
     rates: { Common: 0.80, Rare: 0.17, Epic: 0.03, Legendary: 0.00 },
+    pityRareMax: 10,
+    pityEpicMax: 25,
     img: '/assets/garbage_bag_1785865795905.jpg',
     icon: '🗑️',
     color: 'linear-gradient(135deg, #334155 0%, #0f172a 100%)',
@@ -17,27 +21,57 @@ export const BAGS = [
     id: 'nylon_bag',
     name: 'Túi Nilon Đi Chợ',
     cost: 50,
+    minLevel: 3,
+    expGain: 50,
     desc: 'Tỷ lệ vật phẩm hiếm cao hơn. Túi nilon nhiều màu vô tri!',
     ratesDesc: 'Common 40% | Rare 40% | Epic 18% | Legendary 2%',
     rates: { Common: 0.40, Rare: 0.40, Epic: 0.18, Legendary: 0.02 },
+    pityRareMax: 8,
+    pityEpicMax: 20,
     img: '/assets/shopping_bag_1785865829267.jpg',
     icon: '🛍️',
     color: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
     borderColor: '#38bdf8',
     textColor: '#ffffff',
-    badge: 'Phổ biến'
+    badge: 'Mở khóa Lv.3'
   },
   {
     id: 'rich_bag',
     name: 'Túi Đại Gia',
     cost: 150,
+    minLevel: 5,
+    expGain: 150,
     desc: 'Cơ hội nhận vật phẩm Sử Thi và Huyền Thoại quý giá!',
     ratesDesc: 'Common 10% | Rare 35% | Epic 40% | Legendary 15%',
     rates: { Common: 0.10, Rare: 0.35, Epic: 0.40, Legendary: 0.15 },
+    pityRareMax: 5,
+    pityEpicMax: 12,
     icon: '👑',
     color: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
     borderColor: '#fbbf24',
     textColor: '#ffffff',
-    badge: 'Dân chơi VIP'
+    badge: 'Mở khóa Lv.5'
+  },
+
+  // --- SỰ KIỆN GIỚI HẠN ---
+  {
+    id: 'event_tet',
+    name: 'Túi Tết Thần Tài 🧧',
+    cost: 200,
+    minLevel: 1,
+    expGain: 200,
+    isEvent: true,
+    eventName: 'Sự Kiện Tết Thần Tài 🧧',
+    // Always active by checking date or custom flag
+    desc: 'Túi sự kiện đỏ thắm may mắn! Tỷ lệ rơi Huyền Thoại cực cao!',
+    ratesDesc: 'Common 5% | Rare 25% | Epic 45% | Legendary 25%',
+    rates: { Common: 0.05, Rare: 0.25, Epic: 0.45, Legendary: 0.25 },
+    pityRareMax: 4,
+    pityEpicMax: 10,
+    icon: '🧧',
+    color: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
+    borderColor: '#ef4444',
+    textColor: '#fef08a',
+    badge: 'TẾT THẦN TÀI 🧧'
   }
 ];

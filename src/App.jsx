@@ -1,19 +1,29 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './index.css';
 
 // Components & Modules
 import { Header } from './components/Header';
 import { BagSelector } from './components/BagSelector';
 import { ResultModal } from './components/ResultModal';
+import { MultiResultModal } from './components/MultiResultModal';
 import { InventoryModal } from './components/InventoryModal';
 import { QuestsModal } from './components/QuestsModal';
 import { AchievementsModal } from './components/AchievementsModal';
 import { SettingsModal } from './components/SettingsModal';
+import { ProfileModal } from './components/ProfileModal';
+import { ShopModal } from './components/ShopModal';
+import { RecycleModal } from './components/RecycleModal';
+import { CollectionsModal } from './components/CollectionsModal';
+import { HistoryModal } from './components/HistoryModal';
+import { AdminSimModal } from './components/AdminSimModal';
+import { TutorialOverlay } from './components/TutorialOverlay';
 import { ParticlesCanvas } from './components/ParticlesCanvas';
 
 import { BAGS } from './data/bags';
 import { ITEM_RARITIES } from './data/items';
+import { COLLECTIONS } from './data/collections';
 import { soundManager } from './utils/sound';
+import { addExp } from './utils/level';
 import { 
   loadState, 
   saveState, 
@@ -26,11 +36,15 @@ export default function App() {
   // Game State
   const [gameState, setGameState] = useState(() => loadState());
   
-  // UI States
+  // Animation & UI States
   const [isOpening, setIsOpening] = useState(false);
-  const [resultData, setResultData] = useState(null);
-  const [activeModal, setActiveModal] = useState(null); // 'inventory' | 'quests' | 'achievements' | 'settings' | null
+  const [singleResultData, setSingleResultData] = useState(null);
+  const [multiResultsData, setMultiResultsData] = useState(null);
+  const [activeModal, setActiveModal] = useState(null);
   const [particleTrigger, setParticleTrigger] = useState(0);
+  const [showTutorial, setShowTutorial] = useState(!gameState.tutorialCompleted);
+
+  const ripTimeoutRef = useRef(null);
 
   // Sync sound manager with settings
   useEffect(() => {
@@ -41,6 +55,19 @@ export default function App() {
   useEffect(() => {
     saveState(gameState);
   }, [gameState]);
+
+  // Keyboard shortcut: Escape to close modals
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (singleResultData) setSingleResultData(null);
+        else if (multiResultsData) setMultiResultsData(null);
+        else if (activeModal) setActiveModal(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [singleResultData, multiResultsData, activeModal]);
 
   // Check achievements helper
   const checkAchievements = useCallback((newState) => {
@@ -90,43 +117,62 @@ export default function App() {
     setGameState(prev => ({ ...prev, selectedBagId: bagId }));
   };
 
-  // Handle Bag Rip Execution
-  const handleRipBag = (bag) => {
-    if (isOpening) return;
-
-    if (gameState.coins < bag.cost) {
-      alert(`Bạn không đủ ${bag.cost} xu để xé ${bag.name}!`);
+  // Perform Rip Processing (Single or Multi-count)
+  const executeRip = (bag, count = 1) => {
+    const totalCost = bag.cost * count;
+    if (gameState.coins < totalCost) {
+      alert(`Bạn không đủ ${totalCost} xu để xé ${count}x ${bag.name}!`);
       return;
     }
 
     setIsOpening(true);
-    
-    // Deduct coins & update stats
+
+    // Deduct coins & add EXP
+    const expGained = bag.expGain * count;
+    const levelResult = addExp(gameState.level, gameState.exp, expGained);
+
+    if (levelResult.leveledUp) {
+      soundManager.playLegendary();
+      alert(`🎉 CHÚC MỪNG! Bạn đã thăng cấp Lv.${levelResult.level}! Nhận +${levelResult.totalRewardCoins} Xu thưởng!`);
+    }
+
     setGameState(prev => ({
       ...prev,
-      coins: prev.coins - bag.cost,
+      coins: prev.coins - totalCost + levelResult.totalRewardCoins,
+      level: levelResult.level,
+      exp: levelResult.exp,
       stats: {
         ...prev.stats,
-        totalOpened: prev.stats.totalOpened + 1,
-        totalSpent: prev.stats.totalSpent + bag.cost
+        totalOpened: prev.stats.totalOpened + count,
+        totalSpent: prev.stats.totalSpent + totalCost
       }
     }));
 
-    // Play ripping sound
     soundManager.playRip();
 
-    // After animation delay, calculate result item
-    setTimeout(() => {
-      // Apply Pity Booster if consecutive non-rare >= 5
-      let rates = { ...bag.rates };
-      if (gameState.pityCounter >= 5) {
-        rates.Rare += 0.15;
-        rates.Epic += 0.10;
-        rates.Legendary += 0.05;
-        rates.Common = Math.max(0, rates.Common - 0.30);
-      }
+    // Process rolls
+    ripTimeoutRef.current = setTimeout(() => {
+      processRollResults(bag, count);
+    }, 750);
+  };
 
-      // Roll Rarity
+  const processRollResults = (bag, count) => {
+    let currentGameState = loadState();
+    let currentPity = { ...currentGameState.pityMap[bag.id] || { rare: 0, epic: 0 } };
+    let currentItemsMap = { ...currentGameState.items };
+    let currentHistory = [...currentGameState.historyLog];
+    let currentQuests = { ...currentGameState.quests };
+    let currentConsecutiveCommon = currentGameState.consecutiveCommon;
+
+    const results = [];
+
+    for (let c = 0; c < count; c++) {
+      let rates = { ...bag.rates };
+
+      // Apply pity booster
+      if (currentPity.rare >= bag.pityRareMax) rates.Rare += 0.20;
+      if (currentPity.epic >= bag.pityEpicMax) rates.Epic += 0.15;
+
       const roll = Math.random();
       let chosenRarity = 'Common';
       let cumulative = 0;
@@ -136,82 +182,172 @@ export default function App() {
       else if (roll < (cumulative += rates.Rare)) chosenRarity = 'Rare';
       else chosenRarity = 'Common';
 
-      // Pick random item of chosen rarity from global pool
-      const itemsOfRarity = Object.values(gameState.items).filter(i => i.rarity.toUpperCase() === chosenRarity.toUpperCase());
-      const selectedItem = itemsOfRarity.length > 0 
+      // Pick item of chosen rarity
+      const itemsOfRarity = Object.values(currentItemsMap).filter(i => i.rarity.toUpperCase() === chosenRarity.toUpperCase());
+      const selectedItem = itemsOfRarity.length > 0
         ? itemsOfRarity[Math.floor(Math.random() * itemsOfRarity.length)]
-        : Object.values(gameState.items)[0];
+        : Object.values(currentItemsMap)[0];
 
-      const isFirstTime = !selectedItem.unlocked;
+      const isFirstTime = !currentItemsMap[selectedItem.id].unlocked;
+      const newCount = currentItemsMap[selectedItem.id].count + 1;
 
-      // Update state with rolled item
-      setGameState(prev => {
-        const itemInState = prev.items[selectedItem.id];
-        const updatedItem = {
-          ...itemInState,
-          unlocked: true,
-          count: itemInState.count + 1,
-          firstObtainedAt: itemInState.firstObtainedAt || Date.now()
-        };
+      // Update item in state
+      currentItemsMap[selectedItem.id] = {
+        ...currentItemsMap[selectedItem.id],
+        unlocked: true,
+        count: newCount,
+        firstObtainedAt: currentItemsMap[selectedItem.id].firstObtainedAt || Date.now()
+      };
 
-        const updatedItemsMap = {
-          ...prev.items,
-          [selectedItem.id]: updatedItem
-        };
+      const isRarePlus = ['Rare', 'Epic', 'Legendary'].includes(chosenRarity);
 
-        const isRarePlus = ['Rare', 'Epic', 'Legendary'].includes(chosenRarity);
+      // Update pity
+      if (isRarePlus) currentPity.rare = 0;
+      else currentPity.rare += 1;
 
-        // Update Quests
-        const updatedQuests = { ...prev.quests };
-        updatedQuests.rip3 = { ...updatedQuests.rip3, progress: updatedQuests.rip3.progress + 1 };
-        if (isFirstTime) {
-          updatedQuests.new3 = { ...updatedQuests.new3, progress: updatedQuests.new3.progress + 1 };
-        }
-        if (isRarePlus) {
-          updatedQuests.rare1 = { ...updatedQuests.rare1, progress: updatedQuests.rare1.progress + 1 };
-        }
+      if (['Epic', 'Legendary'].includes(chosenRarity)) currentPity.epic = 0;
+      else currentPity.epic += 1;
 
-        let nextState = {
-          ...prev,
-          items: updatedItemsMap,
-          quests: updatedQuests,
-          pityCounter: isRarePlus ? 0 : prev.pityCounter + 1,
-          consecutiveCommon: chosenRarity === 'Common' ? prev.consecutiveCommon + 1 : 0
-        };
+      currentConsecutiveCommon = chosenRarity === 'Common' ? currentConsecutiveCommon + 1 : 0;
 
-        // Specific achievement triggers
-        if (chosenRarity === 'Rare' || chosenRarity === 'Epic') {
-          if (nextState.achievements.first_rare && !nextState.achievements.first_rare.unlocked) {
-            nextState.achievements.first_rare.unlocked = true;
-            nextState.coins += nextState.achievements.first_rare.reward;
-          }
-        }
-        if (chosenRarity === 'Legendary') {
-          if (nextState.achievements.first_legendary && !nextState.achievements.first_legendary.unlocked) {
-            nextState.achievements.first_legendary.unlocked = true;
-            nextState.coins += nextState.achievements.first_legendary.reward;
-          }
-        }
+      // Update Quests progress
+      currentQuests.daily_rip3.progress += 1;
+      currentQuests.weekly_rip30.progress += 1;
+      if (isFirstTime) {
+        currentQuests.daily_new1.progress += 1;
+      }
+      if (isRarePlus) {
+        currentQuests.daily_rare1.progress += 1;
+      }
 
-        return checkAchievements(nextState);
+      // Add to history
+      currentHistory.unshift({
+        id: Date.now() + c,
+        timestamp: Date.now(),
+        bagName: bag.name,
+        cost: bag.cost,
+        item: selectedItem,
+        rarity: chosenRarity,
+        isNew: isFirstTime
       });
 
-      // Prepare Result Data
-      setResultData({
+      results.push({
         item: selectedItem,
         isNew: isFirstTime,
-        totalCount: gameState.items[selectedItem.id].count + 1
+        totalCount: newCount
+      });
+    }
+
+    // Trim history log to max 50
+    currentHistory = currentHistory.slice(0, 50);
+
+    // Save final updated state
+    setGameState(prev => {
+      let updatedState = {
+        ...prev,
+        items: currentItemsMap,
+        quests: currentQuests,
+        historyLog: currentHistory,
+        pityMap: {
+          ...prev.pityMap,
+          [bag.id]: currentPity
+        },
+        consecutiveCommon: currentConsecutiveCommon
+      };
+
+      return checkAchievements(updatedState);
+    });
+
+    setIsOpening(false);
+    setParticleTrigger(Date.now());
+
+    if (count === 1) {
+      setSingleResultData(results[0]);
+      if (results[0].item.rarity === 'Legendary') soundManager.playLegendary();
+      else if (['Epic', 'Rare'].includes(results[0].item.rarity)) soundManager.playRare();
+      else soundManager.playPop();
+    } else {
+      setMultiResultsData(results);
+      soundManager.playRare();
+    }
+  };
+
+  // Skip Animation Handler
+  const handleSkipAnimation = () => {
+    if (ripTimeoutRef.current) {
+      clearTimeout(ripTimeoutRef.current);
+    }
+    const bag = BAGS.find(b => b.id === gameState.selectedBagId) || BAGS[0];
+    processRollResults(bag, 1);
+  };
+
+  // Deconstruct Items Handler
+  const handleDeconstructItem = (itemId) => {
+    setGameState(prev => {
+      const item = prev.items[itemId];
+      if (!item || item.count <= 1) return prev;
+
+      soundManager.playCoin();
+
+      return {
+        ...prev,
+        shards: prev.shards + 10,
+        items: {
+          ...prev.items,
+          [itemId]: { ...item, count: item.count - 1 }
+        }
+      };
+    });
+  };
+
+  const handleDeconstructAll = () => {
+    setGameState(prev => {
+      let extraCount = 0;
+      const updatedItems = { ...prev.items };
+
+      Object.keys(updatedItems).forEach(id => {
+        if (updatedItems[id].count > 1) {
+          extraCount += (updatedItems[id].count - 1);
+          updatedItems[id] = { ...updatedItems[id], count: 1 };
+        }
       });
 
-      setIsOpening(false);
-      setParticleTrigger(Date.now());
+      if (extraCount === 0) return prev;
 
-      // Play corresponding sound
-      if (chosenRarity === 'Legendary') soundManager.playLegendary();
-      else if (chosenRarity === 'Epic' || chosenRarity === 'Rare') soundManager.playRare();
-      else soundManager.playPop();
+      soundManager.playCoin();
 
-    }, 750);
+      return {
+        ...prev,
+        shards: prev.shards + extraCount * 10,
+        items: updatedItems
+      };
+    });
+  };
+
+  const handleExchangeShards = (bagId, shardCost) => {
+    if (gameState.shards < shardCost) {
+      alert('Bạn không đủ Mảnh Vô Tri!');
+      return;
+    }
+    const bag = BAGS.find(b => b.id === bagId) || BAGS[0];
+    setGameState(prev => ({ ...prev, shards: prev.shards - shardCost }));
+    executeRip(bag, 1);
+  };
+
+  // Shop Buy Handler
+  const handleBuyShopItem = (shopItem) => {
+    if (gameState.coins < shopItem.price) {
+      alert('Bạn không đủ xu!');
+      return;
+    }
+
+    soundManager.playCoin();
+
+    setGameState(prev => ({
+      ...prev,
+      coins: prev.coins - shopItem.price,
+      shopOwned: [...prev.shopOwned, shopItem.id]
+    }));
   };
 
   // Quest Claiming
@@ -219,9 +355,7 @@ export default function App() {
     setGameState(prev => {
       const q = prev.quests[questId];
       if (!q || q.claimed || q.progress < q.target) return prev;
-      
       soundManager.playCoin();
-
       return {
         ...prev,
         coins: prev.coins + q.reward,
@@ -249,48 +383,33 @@ export default function App() {
       ...prev,
       items: {
         ...prev.items,
-        [itemId]: {
-          ...prev.items[itemId],
-          isFavorite: !prev.items[itemId].isFavorite
-        }
+        [itemId]: { ...prev.items[itemId], isFavorite: !prev.items[itemId].isFavorite }
       }
     }));
   };
 
-  // Reset Progress
-  const handleResetData = () => {
-    const newState = resetState();
-    setGameState(newState);
-    setActiveModal(null);
-    setResultData(null);
-  };
-
-  // Export & Import Save
-  const handleExportSave = () => {
-    exportSaveJson(gameState);
-  };
-
-  const handleImportSave = (jsonText) => {
-    const imported = importSaveJson(jsonText);
-    if (imported) {
-      setGameState(imported);
-      alert('Nhập dữ liệu thành công!');
-      setActiveModal(null);
-    }
-  };
-
+  const selectedBag = BAGS.find(b => b.id === gameState.selectedBagId) || BAGS[0];
   const unlockedCount = Object.values(gameState.items).filter(i => i.unlocked).length;
   const totalItemsCount = Object.keys(gameState.items).length;
-  const selectedBag = BAGS.find(b => b.id === gameState.selectedBagId) || BAGS[0];
 
   return (
     <div className="app-container" style={{ padding: '1.2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100vh', justifyContent: 'space-between', gap: '1.5rem' }}>
       
+      {/* Onboarding Tutorial */}
+      {showTutorial && (
+        <TutorialOverlay 
+          onComplete={() => {
+            setShowTutorial(false);
+            setGameState(prev => ({ ...prev, tutorialCompleted: true }));
+          }} 
+        />
+      )}
+
       {/* Canvas Particle Effect */}
-      {resultData && (
+      {singleResultData && (
         <ParticlesCanvas 
           trigger={particleTrigger} 
-          rarity={resultData.item.rarity} 
+          rarity={singleResultData.item.rarity} 
           enabled={gameState.settings.particles} 
         />
       )}
@@ -298,40 +417,98 @@ export default function App() {
       {/* Header */}
       <Header 
         coins={gameState.coins}
+        shards={gameState.shards}
+        level={gameState.level}
+        exp={gameState.exp}
+        profile={gameState.profile}
         inventoryCount={unlockedCount}
         totalItemsCount={totalItemsCount}
+        onOpenProfile={() => setActiveModal('profile')}
+        onOpenShop={() => setActiveModal('shop')}
+        onOpenCollections={() => setActiveModal('collections')}
         onOpenInventory={() => setActiveModal('inventory')}
+        onOpenRecycle={() => setActiveModal('recycle')}
         onOpenQuests={() => setActiveModal('quests')}
         onOpenAchievements={() => setActiveModal('achievements')}
+        onOpenHistory={() => setActiveModal('history')}
         onOpenSettings={() => setActiveModal('settings')}
         soundEnabled={gameState.settings.sound}
         onToggleSound={() => setGameState(prev => ({ ...prev, settings: { ...prev.settings, sound: !prev.settings.sound } }))}
       />
 
-      {/* Main Bag Selection & Unboxing Area */}
+      {/* Main Bag Selector & Rip UI */}
       <main style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <BagSelector 
           selectedBagId={gameState.selectedBagId}
           onSelectBag={handleSelectBag}
-          onRipBag={handleRipBag}
+          onRipBag={executeRip}
+          onSkipAnimation={handleSkipAnimation}
           isOpening={isOpening}
           coins={gameState.coins}
+          playerLevel={gameState.level}
+          pityMap={gameState.pityMap}
         />
       </main>
 
       {/* Modals */}
-      {resultData && (
+      {singleResultData && (
         <ResultModal 
-          resultData={resultData}
-          onClose={() => setResultData(null)}
+          resultData={singleResultData}
+          onClose={() => setSingleResultData(null)}
           onRipAgain={() => {
-            setResultData(null);
-            handleRipBag(selectedBag);
+            setSingleResultData(null);
+            executeRip(selectedBag, 1);
           }}
           onOpenInventory={() => {
-            setResultData(null);
+            setSingleResultData(null);
             setActiveModal('inventory');
           }}
+        />
+      )}
+
+      {multiResultsData && (
+        <MultiResultModal 
+          multiResults={multiResultsData}
+          bag={selectedBag}
+          onClose={() => setMultiResultsData(null)}
+          onRipAgain={() => {
+            setMultiResultsData(null);
+            executeRip(selectedBag, multiResultsData.length);
+          }}
+        />
+      )}
+
+      {activeModal === 'profile' && (
+        <ProfileModal 
+          profile={gameState.profile}
+          level={gameState.level}
+          exp={gameState.exp}
+          coins={gameState.coins}
+          shards={gameState.shards}
+          stats={gameState.stats}
+          unlockedCount={unlockedCount}
+          totalCount={totalItemsCount}
+          shopOwned={gameState.shopOwned}
+          itemsMap={gameState.items}
+          onUpdateProfile={(p) => setGameState(prev => ({ ...prev, profile: p }))}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+
+      {activeModal === 'shop' && (
+        <ShopModal 
+          coins={gameState.coins}
+          shopOwned={gameState.shopOwned}
+          onBuyItem={handleBuyShopItem}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+
+      {activeModal === 'collections' && (
+        <CollectionsModal 
+          itemsMap={gameState.items}
+          achievementsMap={gameState.achievements}
+          onClose={() => setActiveModal(null)}
         />
       )}
 
@@ -340,6 +517,17 @@ export default function App() {
           itemsMap={gameState.items}
           onClose={() => setActiveModal(null)}
           onToggleFavorite={handleToggleFavorite}
+        />
+      )}
+
+      {activeModal === 'recycle' && (
+        <RecycleModal 
+          itemsMap={gameState.items}
+          shards={gameState.shards}
+          onDeconstructItem={handleDeconstructItem}
+          onDeconstructAll={handleDeconstructAll}
+          onExchangeShards={handleExchangeShards}
+          onClose={() => setActiveModal(null)}
         />
       )}
 
@@ -360,21 +548,53 @@ export default function App() {
         />
       )}
 
-      {activeModal === 'settings' && (
-        <SettingsModal 
-          settings={gameState.settings}
-          onToggleSound={() => setGameState(prev => ({ ...prev, settings: { ...prev.settings, sound: !prev.settings.sound } }))}
-          onToggleParticles={() => setGameState(prev => ({ ...prev, settings: { ...prev.settings, particles: !prev.settings.particles } }))}
-          onResetData={handleResetData}
-          onExportSave={handleExportSave}
-          onImportSave={handleImportSave}
+      {activeModal === 'history' && (
+        <HistoryModal 
+          historyLog={gameState.historyLog}
+          onClearHistory={() => setGameState(prev => ({ ...prev, historyLog: [] }))}
           onClose={() => setActiveModal(null)}
         />
       )}
 
+      {activeModal === 'settings' && (
+        <SettingsModal 
+          settings={gameState.settings}
+          performanceMode={gameState.performanceMode}
+          onToggleSound={() => setGameState(prev => ({ ...prev, settings: { ...prev.settings, sound: !prev.settings.sound } }))}
+          onToggleParticles={() => setGameState(prev => ({ ...prev, settings: { ...prev.settings, particles: !prev.settings.particles } }))}
+          onChangePerformanceMode={(mode) => setGameState(prev => ({ ...prev, performanceMode: mode }))}
+          onResetData={() => {
+            const newState = resetState();
+            setGameState(newState);
+            setActiveModal(null);
+            setSingleResultData(null);
+            setMultiResultsData(null);
+          }}
+          onExportSave={() => exportSaveJson(gameState)}
+          onImportSave={(jsonText) => {
+            const imported = importSaveJson(jsonText);
+            if (imported) {
+              setGameState(imported);
+              alert('Nhập dữ liệu thành công!');
+              setActiveModal(null);
+            }
+          }}
+          onOpenTutorial={() => {
+            setActiveModal(null);
+            setShowTutorial(true);
+          }}
+          onOpenAdminSim={() => setActiveModal('adminSim')}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+
+      {activeModal === 'adminSim' && (
+        <AdminSimModal onClose={() => setActiveModal(null)} />
+      )}
+
       {/* Footer */}
       <footer style={{ fontSize: '0.8rem', color: '#64748b', textAlign: 'center' }}>
-        Xé Túi Mù Vô Tri Game • Phiên bản 2.0 Complete • Auto-saved in browser
+        Xé Túi Mù Vô Tri Web Game v2.5 • Full Systems Active • Auto-saved
       </footer>
     </div>
   );
