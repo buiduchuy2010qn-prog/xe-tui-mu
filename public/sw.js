@@ -1,10 +1,8 @@
-const CACHE_NAME = 'xe-tui-mu-v4-full-rebuild';
+const CACHE_NAME = 'xe-tui-mu-v5-world-pack-catch-game';
 const CORE_ASSETS = ['/manifest.json', '/favicon.svg'];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS))
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS)));
   self.skipWaiting();
 });
 
@@ -20,30 +18,23 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET') return;
-
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then((response) => response)
-        .catch(() => caches.match('/index.html').then((cached) => cached || Response.error()))
-    );
+    event.respondWith(fetch(request).catch(() => caches.match('/index.html').then((cached) => cached || Response.error())));
     return;
   }
 
   event.respondWith(
-    caches.match(request).then((cached) => {
-      const network = fetch(request).then((response) => {
+    fetch(request)
+      .then((response) => {
         if (response.ok) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
         }
         return response;
-      });
-
-      return cached || network;
-    })
+      })
+      .catch(() => caches.match(request))
   );
 });
