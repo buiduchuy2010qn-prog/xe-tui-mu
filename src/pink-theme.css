@@ -1,0 +1,779 @@
+:root {
+  color-scheme: light;
+  --pink-ink: #4d263a;
+  --pink-muted: #8d6478;
+  --pink-line: rgba(221, 131, 171, .34);
+  --pink-card: rgba(255, 251, 253, .82);
+  --pink-card-strong: rgba(255, 247, 251, .94);
+  --pink-accent: #f45d9b;
+  --pink-accent-2: #ff91bd;
+  --pink-deep: #c93678;
+  --pink-soft: #ffd7e7;
+  --pink-shadow: rgba(157, 60, 105, .2);
+}
+
+html,
+body {
+  background: #fff5fa;
+  color: var(--pink-ink);
+}
+
+body {
+  position: relative;
+}
+
+.app-root {
+  position: relative;
+  min-height: 100vh;
+  color: var(--pink-ink);
+  background: transparent !important;
+}
+
+.app-root::before {
+  content: '';
+  position: fixed;
+  inset: -42px;
+  z-index: -4;
+  pointer-events: none;
+  background-color: #fff8fb;
+  background-image:
+    repeating-linear-gradient(0deg, transparent 0 28px, rgba(242, 174, 203, .17) 28px 37px, transparent 37px 78px, rgba(224, 132, 173, .13) 78px 83px, transparent 83px 126px),
+    repeating-linear-gradient(90deg, transparent 0 30px, rgba(245, 177, 207, .18) 30px 41px, transparent 41px 83px, rgba(218, 124, 166, .12) 83px 88px, transparent 88px 132px),
+    repeating-linear-gradient(0deg, transparent 0 112px, rgba(255,255,255,.68) 112px 135px, transparent 135px 224px),
+    repeating-linear-gradient(90deg, transparent 0 118px, rgba(255,255,255,.72) 118px 142px, transparent 142px 236px),
+    linear-gradient(145deg, rgba(255,255,255,.9), rgba(255,225,238,.72));
+  background-size: 100% 100%;
+  filter: saturate(104%);
+  transform: scale(1.05);
+  animation: plaidDrift 24s ease-in-out infinite alternate;
+}
+
+.app-root::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -3;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 16% 10%, rgba(255,255,255,.92), transparent 25rem),
+    radial-gradient(circle at 84% 14%, rgba(255,190,219,.34), transparent 24rem),
+    radial-gradient(circle at 50% 94%, rgba(249,112,168,.2), transparent 32rem),
+    linear-gradient(180deg, rgba(255,255,255,.15), rgba(255,247,251,.55));
+  animation: softGlow 10s ease-in-out infinite alternate;
+}
+
+.page-noise {
+  opacity: .045 !important;
+  mix-blend-mode: multiply;
+}
+
+.ambient {
+  opacity: .3 !important;
+  filter: blur(80px) !important;
+}
+
+.ambient-one {
+  background: #ff87b8 !important;
+  animation: pinkBlobOne 12s ease-in-out infinite alternate !important;
+}
+
+.ambient-two {
+  background: #ffc4dc !important;
+  animation: pinkBlobTwo 15s ease-in-out infinite alternate !important;
+}
+
+.pink-sparkle-field {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.pink-sparkle-field span {
+  position: absolute;
+  width: var(--size, 12px);
+  height: var(--size, 12px);
+  left: var(--x, 50%);
+  top: 108%;
+  opacity: .68;
+  filter: drop-shadow(0 5px 10px rgba(205, 67, 126, .18));
+  animation: floatCharm var(--duration, 13s) linear infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+.pink-sparkle-field span::before,
+.pink-sparkle-field span::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 55% 45% 55% 45%;
+  background: linear-gradient(145deg, rgba(255,255,255,.95), rgba(255,126,178,.8));
+  transform: rotate(45deg);
+}
+
+.pink-sparkle-field span::after {
+  inset: 28%;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 0 14px rgba(255,112,170,.7);
+}
+
+.topbar {
+  border-color: rgba(224, 119, 166, .32) !important;
+  background: linear-gradient(135deg, rgba(255,255,255,.84), rgba(255,237,246,.74)) !important;
+  box-shadow: 0 20px 55px rgba(151, 59, 102, .16), inset 0 1px rgba(255,255,255,.94) !important;
+  backdrop-filter: blur(26px) saturate(145%) !important;
+  -webkit-backdrop-filter: blur(26px) saturate(145%) !important;
+  animation: topbarDrop .7s cubic-bezier(.2,.85,.2,1) both;
+}
+
+.brand-mark {
+  color: #fff !important;
+  background: linear-gradient(145deg, #ffb4d2, #f2609d 58%, #c93678) !important;
+  box-shadow: 0 12px 28px rgba(205, 55, 119, .28), inset 0 1px rgba(255,255,255,.68) !important;
+  animation: brandBounce 3.8s ease-in-out infinite;
+}
+
+.brand strong,
+.stat-chip,
+.topbar-actions button {
+  color: var(--pink-ink) !important;
+}
+
+.brand small,
+.stat-chip small {
+  color: var(--pink-muted) !important;
+}
+
+.stat-chip {
+  border-color: rgba(215, 116, 159, .23) !important;
+  background: rgba(255,255,255,.68) !important;
+  box-shadow: 0 8px 22px rgba(147, 61, 100, .08), inset 0 1px white !important;
+}
+
+.coin-chip {
+  color: #9a4c17 !important;
+  background: linear-gradient(135deg, rgba(255,244,195,.9), rgba(255,218,143,.78)) !important;
+  border-color: rgba(218, 154, 60, .35) !important;
+}
+
+.level-dot {
+  color: #fff !important;
+  background: linear-gradient(145deg, #ff9fc5, #df4d8b) !important;
+  box-shadow: 0 5px 14px rgba(209, 69, 130, .25);
+}
+
+.topbar-actions button {
+  border-color: rgba(215, 116, 159, .22) !important;
+  background: rgba(255,255,255,.66) !important;
+  box-shadow: 0 8px 18px rgba(147, 61, 100, .08);
+}
+
+.topbar-actions button:hover {
+  color: #fff !important;
+  background: linear-gradient(145deg, #ff9fc5, #e24f8e) !important;
+  transform: translateY(-3px) rotate(-3deg) !important;
+}
+
+.topbar-actions .earn-nav {
+  color: #fff !important;
+  background: linear-gradient(135deg, #ff9ec5, #ed5b99 55%, #ce397b) !important;
+  box-shadow: 0 12px 26px rgba(201, 54, 118, .23);
+}
+
+.game-shell {
+  animation: pageRise .75s cubic-bezier(.2,.85,.2,1) both;
+}
+
+.arena,
+.bag-section,
+.detail-card,
+.earn-ribbon,
+.panel,
+.reveal-panel,
+.tutorial-card,
+.catch-game-shell {
+  border-color: rgba(215, 112, 158, .28) !important;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.9), rgba(255,239,247,.8)) !important;
+  box-shadow:
+    0 28px 80px rgba(147, 61, 100, .16),
+    inset 0 1px rgba(255,255,255,.96) !important;
+  backdrop-filter: blur(24px) saturate(142%);
+  -webkit-backdrop-filter: blur(24px) saturate(142%);
+}
+
+.arena {
+  animation: panelBreathe 6s ease-in-out infinite;
+}
+
+.arena::before {
+  opacity: .2 !important;
+  background-image:
+    linear-gradient(rgba(229, 128, 173, .07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(229, 128, 173, .07) 1px, transparent 1px) !important;
+}
+
+.arena::after {
+  border-color: rgba(238, 102, 160, .18) !important;
+  box-shadow: 0 0 0 70px rgba(251, 153, 195, .05), 0 0 0 140px rgba(245, 116, 171, .04) !important;
+  animation: orbitPulse 8s ease-in-out infinite;
+}
+
+.eyebrow,
+.arena-copy > p,
+.arena-badges span,
+.quantity-block label,
+.section-heading p,
+.choice-copy small,
+.detail-kicker,
+.earn-ribbon small,
+.package-origin {
+  color: var(--pink-muted) !important;
+}
+
+.eyebrow span {
+  background: linear-gradient(90deg, transparent, #ef5e9d) !important;
+  box-shadow: 0 0 9px #ef5e9d !important;
+}
+
+.arena-copy h1,
+.section-heading h2,
+.panel-header h2,
+.reveal-heading h2,
+.tutorial-copy h2,
+.catch-game-header h2,
+.catch-intro h3,
+.catch-result h3 {
+  color: var(--pink-ink) !important;
+}
+
+.arena-copy h1 em {
+  color: #d93f83 !important;
+  text-shadow: 0 12px 35px rgba(218, 63, 131, .2) !important;
+}
+
+.arena-badges span,
+.quantity-switch,
+.bag-stage-footer div,
+.category-tabs button,
+.bag-choice,
+.collection-grid article,
+.quest-list article,
+.earn-method-grid article,
+.setting-list > button,
+.daily-reward-grid > div {
+  border-color: rgba(215, 116, 159, .22) !important;
+  background: rgba(255,255,255,.66) !important;
+  color: var(--pink-ink) !important;
+  box-shadow: 0 10px 25px rgba(147, 61, 100, .07), inset 0 1px white;
+}
+
+.quantity-switch button {
+  color: #9b6a80 !important;
+}
+
+.quantity-switch button.active,
+.category-tabs button.active {
+  color: #fff !important;
+  background: linear-gradient(145deg, #ff9fc5, #e84f91) !important;
+  box-shadow: 0 9px 24px rgba(213, 63, 128, .24) !important;
+  animation: selectedPop .34s cubic-bezier(.2,.9,.2,1);
+}
+
+.primary-open-button,
+.earn-coin-button,
+.earn-ribbon button,
+.reveal-primary,
+.tutorial-next,
+.catch-intro button,
+.catch-result button,
+.earn-hero-card > button,
+.daily-reward-card > button {
+  position: relative;
+  overflow: hidden;
+  color: #fff !important;
+  border-color: rgba(255,255,255,.62) !important;
+  background: linear-gradient(135deg, #ffb2d1 0%, #f368a3 46%, #cb397a 100%) !important;
+  box-shadow: 0 18px 40px rgba(203, 57, 122, .24), inset 0 1px rgba(255,255,255,.7) !important;
+}
+
+.primary-open-button::after,
+.earn-coin-button::after,
+.earn-ribbon button::after,
+.reveal-primary::after,
+.tutorial-next::after,
+.catch-intro button::after,
+.catch-result button::after,
+.earn-hero-card > button::after,
+.daily-reward-card > button::after {
+  content: '';
+  position: absolute;
+  inset: -35% auto -35% -45%;
+  width: 32%;
+  transform: skewX(-22deg);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.72), transparent);
+  animation: buttonShine 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.primary-open-button:hover:not(:disabled),
+.earn-coin-button:hover:not(:disabled),
+.earn-ribbon button:hover,
+.reveal-primary:hover,
+.tutorial-next:hover,
+.catch-intro button:hover:not(:disabled),
+.catch-result button:hover {
+  transform: translateY(-4px) scale(1.015) !important;
+  filter: saturate(112%) brightness(1.03);
+}
+
+.primary-open-icon,
+.earn-ribbon-icon,
+.earn-method-icon {
+  color: #fff !important;
+  background: linear-gradient(145deg, #ec5d9b, #b92f6e) !important;
+}
+
+.free-coin-button,
+.earn-ribbon p strong,
+.choice-copy strong,
+.bag-stage-label strong,
+.bag-stage-footer strong,
+.rate-row span,
+.rate-row strong,
+.how-card li span,
+.quest-copy strong,
+.panel-header span,
+.reveal-heading span,
+.tutorial-copy span,
+.catch-game-header span {
+  color: var(--pink-ink) !important;
+}
+
+.free-coin-button:not(:disabled):hover {
+  color: #cc3979 !important;
+  transform: translateX(4px);
+}
+
+.bag-stage {
+  border-color: rgba(215, 112, 158, .28) !important;
+  background:
+    radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--arena-accent) 17%, transparent), transparent 45%),
+    linear-gradient(145deg, rgba(255,255,255,.84), rgba(255,224,238,.5)) !important;
+  box-shadow: inset 0 1px white, 0 24px 60px rgba(147,61,100,.14) !important;
+}
+
+.stage-ring {
+  animation-duration: 9s !important;
+  filter: drop-shadow(0 0 7px rgba(240, 89, 153, .2));
+}
+
+.package-visual {
+  animation: packageFloat 3.8s ease-in-out infinite;
+}
+
+.package-visual::after {
+  animation: packageSealPulse 2.6s ease-in-out infinite;
+}
+
+.package-shine {
+  background: linear-gradient(108deg, rgba(255,255,255,.35), transparent 18%, transparent 56%, rgba(255,255,255,.24), transparent 78%) !important;
+  background-size: 220% 100% !important;
+  animation: packageShimmer 3.4s ease-in-out infinite;
+}
+
+.package-compact {
+  animation: compactWiggle 4.6s ease-in-out infinite;
+}
+
+.bag-choice {
+  transition: transform .25s cubic-bezier(.2,.85,.2,1), box-shadow .25s ease, border-color .25s ease !important;
+}
+
+.bag-choice:hover:not(.locked) {
+  transform: translateY(-8px) rotate(-1deg) !important;
+  border-color: rgba(230, 78, 144, .52) !important;
+  box-shadow: 0 22px 42px rgba(161, 57, 104, .17), inset 0 1px white !important;
+}
+
+.bag-choice.selected {
+  border-color: #e85a98 !important;
+  box-shadow: 0 18px 45px rgba(207, 58, 123, .22), 0 0 0 3px rgba(255,145,189,.18), inset 0 1px white !important;
+  animation: selectedCardGlow 2.5s ease-in-out infinite;
+}
+
+.bag-catalog-grid .bag-choice:nth-child(3n + 1) { animation-delay: -.4s; }
+.bag-catalog-grid .bag-choice:nth-child(3n + 2) { animation-delay: -.9s; }
+.bag-catalog-grid .bag-choice:nth-child(3n + 3) { animation-delay: -1.4s; }
+
+.choice-check {
+  color: #fff !important;
+  background: linear-gradient(145deg, #ff95bf, #cf397a) !important;
+  animation: checkPulse 1.8s ease-in-out infinite;
+}
+
+.earn-ribbon {
+  background: linear-gradient(110deg, rgba(255,255,255,.86), rgba(255,220,235,.78)) !important;
+  animation: ribbonGlow 4.5s ease-in-out infinite;
+}
+
+.category-tabs button:hover {
+  transform: translateY(-2px);
+  border-color: rgba(222, 76, 139, .4) !important;
+}
+
+.panel-overlay,
+.reveal-overlay,
+.tutorial-overlay,
+.catch-game-overlay,
+.tear-overlay {
+  background:
+    linear-gradient(rgba(255,245,250,.72), rgba(255,238,246,.84)),
+    repeating-linear-gradient(0deg, transparent 0 30px, rgba(240, 157, 193, .16) 30px 38px, transparent 38px 82px),
+    repeating-linear-gradient(90deg, transparent 0 31px, rgba(240, 157, 193, .16) 31px 40px, transparent 40px 84px) !important;
+  backdrop-filter: blur(14px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(120%) !important;
+}
+
+.panel,
+.reveal-panel,
+.tutorial-card,
+.catch-game-shell {
+  color: var(--pink-ink) !important;
+  animation: modalPop .38s cubic-bezier(.2,.9,.2,1) both;
+}
+
+.panel-header button,
+.reveal-actions button:not(.reveal-primary),
+.tutorial-skip,
+.catch-game-header button,
+.data-actions button,
+.data-actions label {
+  color: var(--pink-ink) !important;
+  border-color: rgba(214, 112, 157, .24) !important;
+  background: rgba(255,255,255,.72) !important;
+}
+
+.panel-header button:hover,
+.reveal-actions button:not(.reveal-primary):hover,
+.tutorial-skip:hover,
+.catch-game-header button:hover {
+  color: #fff !important;
+  background: #e55392 !important;
+  transform: rotate(4deg) scale(1.04);
+}
+
+.collection-progress,
+.quest-copy > div,
+.tear-meter > div {
+  background: rgba(223, 130, 170, .17) !important;
+}
+
+.collection-progress i,
+.quest-copy > div i,
+.tear-meter > div i {
+  background: linear-gradient(90deg, #ff9fc5, #e34c8d, #ffbbd6) !important;
+  box-shadow: 0 0 16px rgba(226, 74, 141, .35);
+}
+
+.collection-grid article:hover,
+.quest-list article:hover,
+.earn-method-grid article:hover {
+  transform: translateY(-4px);
+  border-color: rgba(225, 75, 140, .4) !important;
+}
+
+.reveal-overlay {
+  color: var(--pink-ink) !important;
+}
+
+.reveal-radiance {
+  opacity: .48 !important;
+  filter: blur(50px) saturate(115%);
+  animation: revealRadiance 2.3s ease-in-out infinite alternate;
+}
+
+.reveal-spark {
+  background: linear-gradient(145deg, white, #ff76ad) !important;
+  box-shadow: 0 0 12px #ff8ab8;
+}
+
+.single-reveal-card,
+.multi-reveal-grid article {
+  background: rgba(255,255,255,.72) !important;
+  border-color: rgba(220, 112, 158, .28) !important;
+  box-shadow: 0 18px 42px rgba(147,61,100,.12), inset 0 1px white !important;
+}
+
+.world-tear-overlay .tear-backdrop {
+  background:
+    radial-gradient(circle at 50% 44%, rgba(255,134,183,.25), transparent 36rem),
+    linear-gradient(rgba(255,245,250,.7), rgba(255,225,239,.86)) !important;
+}
+
+.world-tear-overlay .tear-heading h2,
+.world-tear-overlay .tear-heading p,
+.world-tear-overlay .tear-instruction strong,
+.world-tear-overlay .tear-meter span,
+.world-tear-overlay .tear-hint {
+  color: var(--pink-ink) !important;
+}
+
+.world-tear-overlay .tear-heading > span {
+  color: #d13b7e !important;
+  background: rgba(255,255,255,.7) !important;
+  border-color: rgba(221, 92, 150, .3) !important;
+}
+
+.world-tear-overlay .tear-beam {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.7), rgba(255,102,164,.24), transparent) !important;
+  animation: beamSweep 2.9s ease-in-out infinite alternate;
+}
+
+.world-tear-overlay .tear-handle {
+  color: white !important;
+  background: linear-gradient(145deg, #ff9fc5, #d83f82) !important;
+  border-color: rgba(255,255,255,.8) !important;
+  box-shadow: 0 14px 32px rgba(204, 55, 121, .35), 0 0 0 7px rgba(255,148,192,.16) !important;
+  animation: handlePulse 1.45s ease-in-out infinite;
+}
+
+.world-tear-overlay .tear-path path {
+  stroke: #f35195 !important;
+  filter: drop-shadow(0 0 7px rgba(239, 66, 143, .5));
+}
+
+.world-tear-overlay .tear-aura {
+  background: radial-gradient(circle, rgba(255,118,174,.38), transparent 65%) !important;
+}
+
+.world-tear-overlay .tear-fragment {
+  background: linear-gradient(145deg, white, #ff85b7) !important;
+  box-shadow: 0 0 9px rgba(255,107,166,.45);
+}
+
+.catch-game-shell {
+  overflow: hidden;
+}
+
+.catch-arena {
+  background:
+    radial-gradient(circle at 25% 18%, rgba(255,255,255,.9), transparent 24rem),
+    linear-gradient(180deg, #ffe7f1 0%, #ffc7df 54%, #f6a9c9 100%) !important;
+}
+
+.catch-sky i {
+  background: rgba(255,255,255,.8) !important;
+  box-shadow: 0 0 24px rgba(255,255,255,.85);
+  animation-duration: 5s !important;
+}
+
+.falling-catchable {
+  filter: drop-shadow(0 12px 12px rgba(156, 50, 98, .2));
+}
+
+.catch-basket {
+  border-color: #c73a78 !important;
+  background: linear-gradient(180deg, #ffb5d2, #e85c98) !important;
+  box-shadow: 0 14px 28px rgba(153, 48, 96, .25), inset 0 3px rgba(255,255,255,.5) !important;
+  animation: basketBounce 1.3s ease-in-out infinite alternate;
+}
+
+.catch-hud > div,
+.catch-rules b,
+.catch-result-stats > div {
+  color: var(--pink-ink) !important;
+  border-color: rgba(214, 112, 157, .24) !important;
+  background: rgba(255,255,255,.72) !important;
+}
+
+.game-footer {
+  color: #8f6579 !important;
+}
+
+.game-toast {
+  color: #fff !important;
+  border-color: rgba(255,255,255,.7) !important;
+  background: linear-gradient(135deg, #f77dad, #c93678) !important;
+  box-shadow: 0 18px 40px rgba(184, 48, 108, .27) !important;
+  animation: toastBounce .38s cubic-bezier(.2,.95,.2,1) both;
+}
+
+@keyframes plaidDrift {
+  0% { transform: scale(1.05) translate3d(-10px, -8px, 0); }
+  100% { transform: scale(1.08) translate3d(18px, 14px, 0); }
+}
+
+@keyframes softGlow {
+  from { opacity: .78; transform: scale(1); }
+  to { opacity: 1; transform: scale(1.025); }
+}
+
+@keyframes pinkBlobOne {
+  from { transform: translate3d(0,0,0) scale(1); }
+  to { transform: translate3d(9rem,-5rem,0) scale(1.18); }
+}
+
+@keyframes pinkBlobTwo {
+  from { transform: translate3d(0,0,0) scale(1); }
+  to { transform: translate3d(-8rem,7rem,0) scale(1.14); }
+}
+
+@keyframes floatCharm {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(.6); opacity: 0; }
+  12% { opacity: .72; }
+  55% { transform: translate3d(24px, -58vh, 0) rotate(190deg) scale(1); }
+  100% { transform: translate3d(-18px, -118vh, 0) rotate(390deg) scale(.7); opacity: 0; }
+}
+
+@keyframes topbarDrop {
+  from { opacity: 0; transform: translateY(-22px) scale(.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes pageRise {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes brandBounce {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  45% { transform: translateY(-4px) rotate(-4deg); }
+  60% { transform: translateY(-1px) rotate(3deg); }
+}
+
+@keyframes panelBreathe {
+  0%, 100% { box-shadow: 0 28px 80px rgba(147,61,100,.14), inset 0 1px white; }
+  50% { box-shadow: 0 34px 95px rgba(202,73,132,.22), 0 0 0 1px rgba(255,145,189,.14), inset 0 1px white; }
+}
+
+@keyframes orbitPulse {
+  0%, 100% { transform: scale(.95) rotate(0deg); opacity: .62; }
+  50% { transform: scale(1.08) rotate(12deg); opacity: 1; }
+}
+
+@keyframes selectedPop {
+  from { transform: scale(.88); }
+  to { transform: scale(1); }
+}
+
+@keyframes buttonShine {
+  0%, 48% { left: -48%; opacity: 0; }
+  58% { opacity: 1; }
+  78%, 100% { left: 118%; opacity: 0; }
+}
+
+@keyframes packageFloat {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  48% { transform: translateY(-12px) rotate(1.5deg); }
+  62% { transform: translateY(-8px) rotate(.5deg); }
+}
+
+@keyframes packageSealPulse {
+  0%, 100% { opacity: .78; filter: brightness(1); }
+  50% { opacity: 1; filter: brightness(1.25); }
+}
+
+@keyframes packageShimmer {
+  0%, 18% { background-position: 120% 0; opacity: .35; }
+  45% { opacity: .85; }
+  72%, 100% { background-position: -120% 0; opacity: .35; }
+}
+
+@keyframes compactWiggle {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-3px) rotate(1.4deg); }
+}
+
+@keyframes selectedCardGlow {
+  0%, 100% { transform: translateY(-2px); }
+  50% { transform: translateY(-5px); box-shadow: 0 24px 55px rgba(207,58,123,.28), 0 0 0 5px rgba(255,145,189,.13), inset 0 1px white; }
+}
+
+@keyframes checkPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+@keyframes ribbonGlow {
+  0%, 100% { box-shadow: 0 20px 50px rgba(147,61,100,.1), inset 0 1px white; }
+  50% { box-shadow: 0 25px 62px rgba(214,67,132,.18), 0 0 0 2px rgba(255,163,200,.1), inset 0 1px white; }
+}
+
+@keyframes modalPop {
+  from { opacity: 0; transform: translateY(18px) scale(.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes revealRadiance {
+  from { transform: scale(.86) rotate(-5deg); }
+  to { transform: scale(1.12) rotate(7deg); }
+}
+
+@keyframes beamSweep {
+  from { opacity: .35; transform: translateX(-10%) rotate(10deg); }
+  to { opacity: .82; transform: translateX(12%) rotate(14deg); }
+}
+
+@keyframes handlePulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.08); }
+}
+
+@keyframes basketBounce {
+  from { transform: translate(-50%, 0) rotate(-1deg); }
+  to { transform: translate(-50%, -4px) rotate(1deg); }
+}
+
+@keyframes toastBounce {
+  from { opacity: 0; transform: translate(-50%, 18px) scale(.88); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+@media (max-width: 720px) {
+  .app-root::before {
+    background-image:
+      repeating-linear-gradient(0deg, transparent 0 20px, rgba(242,174,203,.18) 20px 27px, transparent 27px 57px, rgba(224,132,173,.12) 57px 61px, transparent 61px 92px),
+      repeating-linear-gradient(90deg, transparent 0 22px, rgba(245,177,207,.19) 22px 29px, transparent 29px 61px, rgba(218,124,166,.12) 61px 65px, transparent 65px 96px),
+      repeating-linear-gradient(0deg, transparent 0 82px, rgba(255,255,255,.66) 82px 98px, transparent 98px 164px),
+      repeating-linear-gradient(90deg, transparent 0 86px, rgba(255,255,255,.7) 86px 103px, transparent 103px 172px),
+      linear-gradient(145deg, rgba(255,255,255,.9), rgba(255,225,238,.72));
+  }
+
+  .topbar,
+  .arena,
+  .panel,
+  .reveal-panel,
+  .tutorial-card,
+  .catch-game-shell {
+    border-radius: 22px !important;
+  }
+
+  .pink-sparkle-field span:nth-child(n + 9) {
+    display: none;
+  }
+
+  .package-visual {
+    animation-duration: 4.4s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-root::before,
+  .app-root::after,
+  .ambient,
+  .pink-sparkle-field,
+  .package-visual,
+  .package-shine,
+  .package-compact,
+  .arena,
+  .bag-choice.selected,
+  .brand-mark,
+  .world-tear-overlay .tear-handle,
+  .world-tear-overlay .tear-beam,
+  .catch-basket {
+    animation: none !important;
+  }
+}
