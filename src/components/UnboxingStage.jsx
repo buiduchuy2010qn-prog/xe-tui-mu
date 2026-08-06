@@ -4,226 +4,207 @@ import './UnboxingStage.css';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-function BagArtwork({ bag }) {
-  if (bag.img) {
-    return <img src={bag.img} alt="" draggable="false" />;
-  }
-
-  return <span className="unbox-bag-icon" aria-hidden="true">{bag.icon || '🎁'}</span>;
+function Artwork({ bag }) {
+  if (bag.img) return <img src={bag.img} alt="" draggable="false" />;
+  return <span className="tear-bag-fallback" aria-hidden="true">{bag.icon || '◆'}</span>;
 }
 
-export function UnboxingStage({ bag, count = 1, onComplete, onSkip }) {
+export function UnboxingStage({ bag, count = 1, onComplete }) {
   const [phase, setPhase] = useState('ready');
   const [progress, setProgress] = useState(0);
-  const [canSkip, setCanSkip] = useState(false);
-  const startXRef = useRef(0);
-  const pointerIdRef = useRef(null);
-  const completedRef = useRef(false);
+  const [showHint, setShowHint] = useState(false);
   const phaseRef = useRef('ready');
   const progressRef = useRef(0);
-  const resetTimerRef = useRef(null);
+  const startXRef = useRef(0);
+  const pointerRef = useRef(null);
+  const doneRef = useRef(false);
   const timersRef = useRef([]);
 
-  const changePhase = (nextPhase) => {
-    phaseRef.current = nextPhase;
-    setPhase(nextPhase);
-  };
-
-  const changeProgress = (nextProgress) => {
-    progressRef.current = nextProgress;
-    setProgress(nextProgress);
-  };
-
-  const shards = useMemo(() => Array.from({ length: 22 }, (_, index) => ({
+  const fragments = useMemo(() => Array.from({ length: 34 }, (_, index) => ({
     id: index,
-    angle: (360 / 22) * index + Math.random() * 14,
-    distance: 90 + Math.random() * 155,
-    delay: Math.random() * 110,
-    size: 5 + Math.random() * 10
+    angle: -150 + Math.random() * 300,
+    distance: 100 + Math.random() * 250,
+    delay: Math.random() * 0.2,
+    size: 4 + Math.random() * 10,
+    rotate: Math.random() * 300 - 150
   })), []);
 
-  const finishOnce = () => {
-    if (completedRef.current) return;
-    completedRef.current = true;
+  const setTearPhase = (next) => {
+    phaseRef.current = next;
+    setPhase(next);
+  };
+
+  const setTearProgress = (next) => {
+    progressRef.current = next;
+    setProgress(next);
+  };
+
+  const finish = () => {
+    if (doneRef.current) return;
+    doneRef.current = true;
     soundManager.stopStretch();
     onComplete();
   };
 
-  const beginTear = () => {
-    if (completedRef.current || ['tearing', 'bursting'].includes(phaseRef.current)) return;
-
-    changeProgress(100);
-    changePhase('tearing');
+  const tearOpen = () => {
+    if (doneRef.current || ['tearing', 'bursting'].includes(phaseRef.current)) return;
+    setShowHint(false);
+    setTearProgress(100);
+    setTearPhase('tearing');
     soundManager.stopStretch();
-    soundManager.playRip();
-
-    if (navigator.vibrate) {
-      navigator.vibrate([20, 25, 42]);
-    }
+    soundManager.playRip(bag.material || 'plastic');
+    if (navigator.vibrate) navigator.vibrate([18, 20, 35, 20, 55]);
 
     const burstTimer = window.setTimeout(() => {
-      changePhase('bursting');
+      setTearPhase('bursting');
       soundManager.playWhoosh();
-    }, 420);
-
-    const finishTimer = window.setTimeout(finishOnce, 1320);
+    }, 520);
+    const finishTimer = window.setTimeout(finish, 1650);
     timersRef.current.push(burstTimer, finishTimer);
   };
 
   useEffect(() => {
-    const skipTimer = window.setTimeout(() => setCanSkip(true), 850);
-    timersRef.current.push(skipTimer);
-
-    if (count > 1) {
-      const autoTimer = window.setTimeout(beginTear, 1050);
-      timersRef.current.push(autoTimer);
-    }
-
+    const hintTimer = window.setTimeout(() => setShowHint(true), 4800);
+    timersRef.current.push(hintTimer);
     return () => {
       timersRef.current.forEach((timer) => window.clearTimeout(timer));
-      window.clearTimeout(resetTimerRef.current);
       soundManager.stopStretch();
     };
   }, []);
 
-  const handlePointerDown = (event) => {
-    if (['tearing', 'bursting'].includes(phaseRef.current)) return;
-
-    pointerIdRef.current = event.pointerId;
+  const onPointerDown = (event) => {
+    if (!['ready', 'returning'].includes(phaseRef.current)) return;
+    pointerRef.current = event.pointerId;
     startXRef.current = event.clientX;
     event.currentTarget.setPointerCapture?.(event.pointerId);
-    changePhase('dragging');
+    setShowHint(false);
+    setTearPhase('dragging');
     soundManager.playGrab();
+    if (navigator.vibrate) navigator.vibrate(8);
   };
 
-  const handlePointerMove = (event) => {
-    if (phaseRef.current !== 'dragging' || pointerIdRef.current !== event.pointerId) return;
-
-    const viewportFactor = Math.min(230, Math.max(150, window.innerWidth * 0.46));
-    const nextProgress = clamp(((event.clientX - startXRef.current) / viewportFactor) * 100, 0, 100);
-    changeProgress(nextProgress);
-    soundManager.playStretch(nextProgress / 100);
-
-    if (nextProgress >= 82) beginTear();
+  const onPointerMove = (event) => {
+    if (phaseRef.current !== 'dragging' || pointerRef.current !== event.pointerId) return;
+    const travel = Math.min(330, Math.max(190, window.innerWidth * 0.67));
+    const next = clamp(((event.clientX - startXRef.current) / travel) * 100, 0, 100);
+    setTearProgress(next);
+    soundManager.playStretch(next / 100);
+    if (next >= 88) tearOpen();
   };
 
-  const handlePointerEnd = (event) => {
-    if (pointerIdRef.current !== event.pointerId || phaseRef.current !== 'dragging') return;
-
+  const releasePointer = (event) => {
+    if (pointerRef.current !== event.pointerId || phaseRef.current !== 'dragging') return;
     event.currentTarget.releasePointerCapture?.(event.pointerId);
-    pointerIdRef.current = null;
+    pointerRef.current = null;
     soundManager.stopStretch();
 
-    if (progressRef.current >= 72) {
-      beginTear();
+    if (progressRef.current >= 76) {
+      tearOpen();
       return;
     }
 
-    changePhase('returning');
-    changeProgress(0);
-    if (navigator.vibrate) navigator.vibrate(9);
-    resetTimerRef.current = window.setTimeout(() => changePhase('ready'), 360);
+    setTearPhase('returning');
+    setTearProgress(0);
+    if (navigator.vibrate) navigator.vibrate(10);
+    const timer = window.setTimeout(() => setTearPhase('ready'), 430);
+    timersRef.current.push(timer);
   };
 
-  const skip = () => {
-    if (completedRef.current) return;
-    completedRef.current = true;
-    timersRef.current.forEach((timer) => window.clearTimeout(timer));
-    soundManager.stopStretch();
-    onSkip();
+  const keyboardTear = (event) => {
+    if (!['Enter', ' '].includes(event.key) || !['ready', 'returning'].includes(phaseRef.current)) return;
+    event.preventDefault();
+    setTearPhase('dragging');
+    let value = 0;
+    const timer = window.setInterval(() => {
+      value += 5;
+      setTearProgress(value);
+      soundManager.playStretch(value / 100);
+      if (value >= 90) {
+        window.clearInterval(timer);
+        tearOpen();
+      }
+    }, 28);
+    timersRef.current.push(timer);
   };
 
-  const normalizedProgress = progress / 100;
-  const progressStyle = {
-    '--tear-progress': `${progress}%`,
-    '--tear-opacity': Math.min(0.92, normalizedProgress * 0.84),
-    '--tear-scale': 0.45 + normalizedProgress * 0.84,
-    '--tear-top-x': `${progress * 0.08}px`,
-    '--tear-top-rotation': `${progress * -0.025}deg`,
-    '--tear-brightness': 1 + progress / 260,
-    '--tear-bottom-x': `${progress * -0.025}px`,
-    '--tear-dash-offset': 360 - progress * 3.6,
-    '--tear-tab-left': `${-4 + progress * 0.9}%`,
-    '--tear-tab-rotation': `${progress * 0.04}deg`
+  const normalized = progress / 100;
+  const stageStyle = {
+    '--tear-progress': progress,
+    '--tear-x': `${progress * 0.91}%`,
+    '--tear-top-shift': `${progress * 0.11}px`,
+    '--tear-bottom-shift': `${progress * -0.035}px`,
+    '--tear-gap': `${Math.max(0, progress - 42) * 0.075}px`,
+    '--tear-glow': Math.min(1, normalized * 1.3),
+    '--tear-tilt': `${progress * -0.035}deg`,
+    '--tear-dash': 520 - progress * 5.2,
+    '--bag-accent': bag.borderColor || '#f5b942'
   };
 
   return (
-    <div className={`unbox-overlay unbox-phase-${phase}`} role="dialog" aria-modal="true" aria-label={`Đang xé ${bag.name}`}>
-      <div className="unbox-backdrop-noise" />
-      <div className="unbox-light-beam" />
+    <div className={`tear-overlay phase-${phase}`} role="dialog" aria-modal="true" aria-label={`Xé ${bag.name}`}>
+      <div className="tear-backdrop" />
+      <div className="tear-beam tear-beam-left" />
+      <div className="tear-beam tear-beam-right" />
 
-      <div className="unbox-stage">
-        <div className="unbox-copy">
-          <span className="unbox-kicker">LƯỢT MỞ {count > 1 ? `×${count}` : 'ĐẶC BIỆT'}</span>
+      <div className="tear-layout">
+        <header className="tear-heading">
+          <span>ĐANG CẦM {count > 1 ? `${count} TÚI` : '1 TÚI'}</span>
           <h2>{bag.name}</h2>
-          <p>{count > 1 ? 'Tự động xé nhiều túi và gom kết quả trong một lần.' : 'Giữ phần mép sáng rồi kéo mạnh sang phải để xé.'}</p>
-        </div>
+          <p>Giữ tay kéo ở mép trái, sau đó kéo dứt khoát hết sang phải.</p>
+        </header>
 
-        <div className={`unbox-bag-scene ${phase}`} style={progressStyle}>
-          <div className="unbox-aura unbox-aura-one" />
-          <div className="unbox-aura unbox-aura-two" />
-          <div className="unbox-inner-glow" />
+        <div className="tear-scene" style={stageStyle}>
+          <div className="tear-aura" />
+          <div className="tear-floor" />
+          <div className="tear-flash" />
 
-          <div className="unbox-fragment unbox-fragment-top">
-            <BagArtwork bag={bag} />
-          </div>
-          <div className="unbox-fragment unbox-fragment-bottom">
-            <BagArtwork bag={bag} />
-          </div>
+          <div className="tear-bag tear-bag-top"><Artwork bag={bag} /><span className="tear-surface" /></div>
+          <div className="tear-bag tear-bag-bottom"><Artwork bag={bag} /><span className="tear-surface" /></div>
 
-          <svg className="unbox-tear-line" viewBox="0 0 320 48" preserveAspectRatio="none" aria-hidden="true">
-            <path d="M0 25 L24 20 L41 29 L63 18 L82 27 L105 17 L126 28 L151 19 L172 30 L197 18 L219 27 L244 17 L263 28 L286 18 L320 24" />
+          <svg className="tear-path" viewBox="0 0 520 66" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M2 34 L32 25 L58 39 L84 22 L113 36 L143 24 L170 40 L201 21 L230 38 L260 24 L291 41 L322 22 L354 37 L386 23 L416 40 L448 24 L478 37 L518 29" />
           </svg>
-
-          <div className="unbox-burst-core" />
-
-          {shards.map((shard) => (
-            <span
-              key={shard.id}
-              className="unbox-shard"
-              style={{
-                '--shard-angle': `${shard.angle}deg`,
-                '--shard-distance': `${shard.distance}px`,
-                '--shard-delay': `${shard.delay}ms`,
-                '--shard-size': `${shard.size}px`
-              }}
-            />
-          ))}
 
           <button
             type="button"
-            className="unbox-pull-tab"
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerEnd}
-            onPointerCancel={handlePointerEnd}
-            disabled={phase === 'tearing' || phase === 'bursting' || count > 1}
+            className="tear-handle"
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={releasePointer}
+            onPointerCancel={releasePointer}
+            onKeyDown={keyboardTear}
+            disabled={['tearing', 'bursting'].includes(phase)}
             aria-label="Giữ và kéo sang phải để xé túi"
           >
-            <span className="unbox-grip-lines" />
-            <span className="unbox-pull-label">KÉO</span>
+            <i /><i /><i /><span>KÉO</span>
           </button>
+
+          <div className={`tear-hand-guide ${phase === 'ready' ? 'visible' : ''}`}><span>☝</span></div>
+          {fragments.map((fragment) => (
+            <i
+              className="tear-fragment"
+              key={fragment.id}
+              style={{
+                '--fragment-angle': `${fragment.angle}deg`,
+                '--fragment-distance': `${fragment.distance}px`,
+                '--fragment-delay': `${fragment.delay}s`,
+                '--fragment-size': `${fragment.size}px`,
+                '--fragment-rotate': `${fragment.rotate}deg`
+              }}
+            />
+          ))}
         </div>
 
-        <div className="unbox-progress-wrap" aria-hidden="true">
-          <div className="unbox-progress-track">
-            <div className="unbox-progress-fill" style={{ width: `${progress}%` }} />
-          </div>
-          <span>{phase === 'bursting' ? 'Đang hé lộ vật phẩm…' : `${Math.round(progress)}%`}</span>
+        <div className="tear-meter">
+          <div><i style={{ width: `${progress}%` }} /></div>
+          <span>{phase === 'bursting' ? 'TÚI ĐÃ BUNG' : phase === 'tearing' ? 'ĐANG RÁCH...' : `${Math.round(progress)}%`}</span>
         </div>
 
-        <div className="unbox-actions">
-          {count === 1 && phase !== 'tearing' && phase !== 'bursting' && (
-            <button type="button" className="unbox-auto-button" onClick={beginTear}>
-              Xé tự động
-            </button>
-          )}
-          {canSkip && (
-            <button type="button" className="unbox-skip-button" onClick={skip}>
-              Bỏ qua
-            </button>
-          )}
+        <div className="tear-instruction">
+          <span className="tear-pulse" />
+          <strong>{phase === 'returning' ? 'Chưa đủ lực — thử kéo lại' : phase === 'bursting' ? 'Đang hé lộ vật phẩm...' : 'Giữ và kéo liên tục, đừng nhấc tay giữa chừng'}</strong>
         </div>
+        {showHint && <p className="tear-hint">Hãy đặt ngón tay lên nút <b>KÉO</b> ở mép trái của túi.</p>}
       </div>
     </div>
   );
