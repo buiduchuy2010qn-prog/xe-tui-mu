@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import './index.css';
 
-// Components & Modules
 import { Header } from './components/Header';
 import { BagSelector } from './components/BagSelector';
+import { UnboxingStage } from './components/UnboxingStage';
 import { ResultModal } from './components/ResultModal';
 import { MultiResultModal } from './components/MultiResultModal';
 import { InventoryModal } from './components/InventoryModal';
@@ -20,77 +20,71 @@ import { TutorialOverlay } from './components/TutorialOverlay';
 import { ParticlesCanvas } from './components/ParticlesCanvas';
 
 import { BAGS } from './data/bags';
-import { ITEM_RARITIES } from './data/items';
-import { COLLECTIONS } from './data/collections';
 import { soundManager } from './utils/sound';
 import { addExp } from './utils/level';
-import { 
-  loadState, 
-  saveState, 
-  resetState, 
-  exportSaveJson, 
-  importSaveJson 
+import {
+  loadState,
+  saveState,
+  resetState,
+  exportSaveJson,
+  importSaveJson
 } from './utils/storage';
 
 export default function App() {
-  // Game State
   const [gameState, setGameState] = useState(() => loadState());
-  
-  // Animation & UI States
   const [isOpening, setIsOpening] = useState(false);
+  const [pendingRip, setPendingRip] = useState(null);
   const [singleResultData, setSingleResultData] = useState(null);
   const [multiResultsData, setMultiResultsData] = useState(null);
   const [activeModal, setActiveModal] = useState(null);
   const [particleTrigger, setParticleTrigger] = useState(0);
   const [showTutorial, setShowTutorial] = useState(!gameState.tutorialCompleted);
 
-  const ripTimeoutRef = useRef(null);
+  const pendingRipRef = useRef(null);
 
-  // Sync sound manager with settings
   useEffect(() => {
     soundManager.setEnabled(gameState.settings.sound);
   }, [gameState.settings.sound]);
 
-  // Persist state on change
   useEffect(() => {
     saveState(gameState);
   }, [gameState]);
 
-  // Keyboard shortcut: Escape to close modals
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        if (singleResultData) setSingleResultData(null);
-        else if (multiResultsData) setMultiResultsData(null);
-        else if (activeModal) setActiveModal(null);
-      }
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape' || pendingRipRef.current) return;
+      if (singleResultData) setSingleResultData(null);
+      else if (multiResultsData) setMultiResultsData(null);
+      else if (activeModal) setActiveModal(null);
     };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      soundManager.stopStretch();
+    };
   }, [singleResultData, multiResultsData, activeModal]);
 
-  // Check achievements helper
   const checkAchievements = useCallback((newState) => {
     let updatedState = { ...newState };
-    let achievementsMap = { ...updatedState.achievements };
+    const achievementsMap = { ...updatedState.achievements };
     let updatedCoins = updatedState.coins;
     let hasNewUnlocked = false;
 
     const totalOpened = updatedState.stats.totalOpened;
-    const unlockedItemsCount = Object.values(updatedState.items).filter(i => i.unlocked).length;
+    const unlockedItemsCount = Object.values(updatedState.items).filter((item) => item.unlocked).length;
     const totalItemsCount = Object.keys(updatedState.items).length;
 
     const unlock = (id) => {
-      if (achievementsMap[id] && !achievementsMap[id].unlocked) {
-        achievementsMap[id] = {
-          ...achievementsMap[id],
-          unlocked: true,
-          unlockedAt: Date.now()
-        };
-        updatedCoins += achievementsMap[id].reward;
-        hasNewUnlocked = true;
-        soundManager.playLegendary();
-      }
+      if (!achievementsMap[id] || achievementsMap[id].unlocked) return;
+      achievementsMap[id] = {
+        ...achievementsMap[id],
+        unlocked: true,
+        unlockedAt: Date.now()
+      };
+      updatedCoins += achievementsMap[id].reward;
+      hasNewUnlocked = true;
+      soundManager.playLegendary();
     };
 
     if (totalOpened >= 1) unlock('first_rip');
@@ -100,77 +94,86 @@ export default function App() {
     if (unlockedItemsCount === totalItemsCount) unlock('master_collector');
     if (updatedState.consecutiveCommon >= 10) unlock('unlucky_10');
 
-    if (hasNewUnlocked) {
-      return {
-        ...updatedState,
-        coins: updatedCoins,
-        achievements: achievementsMap
-      };
-    }
+    if (!hasNewUnlocked) return updatedState;
 
-    return updatedState;
+    return {
+      ...updatedState,
+      coins: updatedCoins,
+      achievements: achievementsMap
+    };
   }, []);
 
-  // Handle Bag Selection
   const handleSelectBag = (bagId) => {
     if (isOpening) return;
-    setGameState(prev => ({ ...prev, selectedBagId: bagId }));
+    setGameState((previous) => ({ ...previous, selectedBagId: bagId }));
   };
 
-  // Perform Rip Processing (Single or Multi-count)
-  const executeRip = (bag, count = 1) => {
+  const beginRip = (bag, count = 1) => {
+    if (isOpening || pendingRipRef.current) return;
+
     const totalCost = bag.cost * count;
     if (gameState.coins < totalCost) {
-      alert(`Bạn không đủ ${totalCost} xu để xé ${count}x ${bag.name}!`);
+      alert(`Bạn cần ${totalCost} xu để xé ${count > 1 ? `${count} túi` : bag.name}.`);
       return;
     }
 
-    setIsOpening(true);
-
-    // Deduct coins & add EXP
     const expGained = bag.expGain * count;
     const levelResult = addExp(gameState.level, gameState.exp, expGained);
-
-    if (levelResult.leveledUp) {
-      soundManager.playLegendary();
-      alert(`🎉 CHÚC MỪNG! Bạn đã thăng cấp Lv.${levelResult.level}! Nhận +${levelResult.totalRewardCoins} Xu thưởng!`);
-    }
-
-    setGameState(prev => ({
-      ...prev,
-      coins: prev.coins - totalCost + levelResult.totalRewardCoins,
+    const nextState = {
+      ...gameState,
+      coins: gameState.coins - totalCost + levelResult.totalRewardCoins,
       level: levelResult.level,
       exp: levelResult.exp,
+      selectedBagId: bag.id,
       stats: {
-        ...prev.stats,
-        totalOpened: prev.stats.totalOpened + count,
-        totalSpent: prev.stats.totalSpent + totalCost
+        ...gameState.stats,
+        totalOpened: gameState.stats.totalOpened + count,
+        totalSpent: gameState.stats.totalSpent + totalCost
       }
-    }));
+    };
 
-    soundManager.playRip();
+    setGameState(nextState);
+    saveState(nextState);
 
-    // Process rolls
-    ripTimeoutRef.current = setTimeout(() => {
-      processRollResults(bag, count);
-    }, 750);
+    const rip = {
+      id: `${Date.now()}-${bag.id}-${count}`,
+      bag,
+      count,
+      completed: false
+    };
+    pendingRipRef.current = rip;
+    setPendingRip(rip);
+    setIsOpening(true);
+
+    if (levelResult.leveledUp) {
+      window.setTimeout(() => {
+        alert(`Đã lên Lv.${levelResult.level} và nhận ${levelResult.totalRewardCoins} xu thưởng.`);
+      }, 80);
+    }
   };
 
-  const processRollResults = (bag, count) => {
-    let currentGameState = loadState();
-    let currentPity = { ...currentGameState.pityMap[bag.id] || { rare: 0, epic: 0 } };
-    let currentItemsMap = { ...currentGameState.items };
+  const processRollResults = useCallback((bag, count) => {
+    const currentGameState = loadState();
+    let currentPity = {
+      ...(currentGameState.pityMap[bag.id] || { rare: 0, epic: 0 })
+    };
+    const currentItemsMap = { ...currentGameState.items };
     let currentHistory = [...currentGameState.historyLog];
-    let currentQuests = { ...currentGameState.quests };
+    const currentQuests = { ...currentGameState.quests };
     let currentConsecutiveCommon = currentGameState.consecutiveCommon;
-
     const results = [];
 
-    for (let c = 0; c < count; c++) {
-      let rates = { ...bag.rates };
+    const increaseQuest = (id, amount = 1) => {
+      if (!currentQuests[id]) return;
+      currentQuests[id] = {
+        ...currentQuests[id],
+        progress: currentQuests[id].progress + amount
+      };
+    };
 
-      // Apply pity booster
-      if (currentPity.rare >= bag.pityRareMax) rates.Rare += 0.20;
+    for (let index = 0; index < count; index += 1) {
+      const rates = { ...bag.rates };
+      if (currentPity.rare >= bag.pityRareMax) rates.Rare += 0.2;
       if (currentPity.epic >= bag.pityEpicMax) rates.Epic += 0.15;
 
       const roll = Math.random();
@@ -180,49 +183,39 @@ export default function App() {
       if (roll < (cumulative += rates.Legendary)) chosenRarity = 'Legendary';
       else if (roll < (cumulative += rates.Epic)) chosenRarity = 'Epic';
       else if (roll < (cumulative += rates.Rare)) chosenRarity = 'Rare';
-      else chosenRarity = 'Common';
 
-      // Pick item of chosen rarity
-      const itemsOfRarity = Object.values(currentItemsMap).filter(i => i.rarity.toUpperCase() === chosenRarity.toUpperCase());
-      const selectedItem = itemsOfRarity.length > 0
+      const itemsOfRarity = Object.values(currentItemsMap).filter(
+        (item) => item.rarity.toUpperCase() === chosenRarity.toUpperCase()
+      );
+      const selectedItem = itemsOfRarity.length
         ? itemsOfRarity[Math.floor(Math.random() * itemsOfRarity.length)]
         : Object.values(currentItemsMap)[0];
 
-      const isFirstTime = !currentItemsMap[selectedItem.id].unlocked;
-      const newCount = currentItemsMap[selectedItem.id].count + 1;
+      const storedItem = currentItemsMap[selectedItem.id];
+      const isFirstTime = !storedItem.unlocked;
+      const newCount = storedItem.count + 1;
 
-      // Update item in state
       currentItemsMap[selectedItem.id] = {
-        ...currentItemsMap[selectedItem.id],
+        ...storedItem,
         unlocked: true,
         count: newCount,
-        firstObtainedAt: currentItemsMap[selectedItem.id].firstObtainedAt || Date.now()
+        firstObtainedAt: storedItem.firstObtainedAt || Date.now()
       };
 
       const isRarePlus = ['Rare', 'Epic', 'Legendary'].includes(chosenRarity);
-
-      // Update pity
-      if (isRarePlus) currentPity.rare = 0;
-      else currentPity.rare += 1;
-
-      if (['Epic', 'Legendary'].includes(chosenRarity)) currentPity.epic = 0;
-      else currentPity.epic += 1;
-
+      currentPity = {
+        rare: isRarePlus ? 0 : currentPity.rare + 1,
+        epic: ['Epic', 'Legendary'].includes(chosenRarity) ? 0 : currentPity.epic + 1
+      };
       currentConsecutiveCommon = chosenRarity === 'Common' ? currentConsecutiveCommon + 1 : 0;
 
-      // Update Quests progress
-      currentQuests.daily_rip3.progress += 1;
-      currentQuests.weekly_rip30.progress += 1;
-      if (isFirstTime) {
-        currentQuests.daily_new1.progress += 1;
-      }
-      if (isRarePlus) {
-        currentQuests.daily_rare1.progress += 1;
-      }
+      increaseQuest('daily_rip3');
+      increaseQuest('weekly_rip30');
+      if (isFirstTime) increaseQuest('daily_new1');
+      if (isRarePlus) increaseQuest('daily_rare1');
 
-      // Add to history
       currentHistory.unshift({
-        id: Date.now() + c,
+        id: Date.now() + index,
         timestamp: Date.now(),
         bagName: bag.name,
         cost: bag.cost,
@@ -238,26 +231,22 @@ export default function App() {
       });
     }
 
-    // Trim history log to max 50
     currentHistory = currentHistory.slice(0, 50);
 
-    // Save final updated state
-    setGameState(prev => {
-      let updatedState = {
-        ...prev,
-        items: currentItemsMap,
-        quests: currentQuests,
-        historyLog: currentHistory,
-        pityMap: {
-          ...prev.pityMap,
-          [bag.id]: currentPity
-        },
-        consecutiveCommon: currentConsecutiveCommon
-      };
-
-      return checkAchievements(updatedState);
+    const updatedState = checkAchievements({
+      ...currentGameState,
+      items: currentItemsMap,
+      quests: currentQuests,
+      historyLog: currentHistory,
+      pityMap: {
+        ...currentGameState.pityMap,
+        [bag.id]: currentPity
+      },
+      consecutiveCommon: currentConsecutiveCommon
     });
 
+    setGameState(updatedState);
+    saveState(updatedState);
     setIsOpening(false);
     setParticleTrigger(Date.now());
 
@@ -268,32 +257,35 @@ export default function App() {
       else soundManager.playPop();
     } else {
       setMultiResultsData(results);
-      soundManager.playRare();
+      const bestRarity = results.reduce((best, result) => {
+        const order = { Common: 0, Rare: 1, Epic: 2, Legendary: 3 };
+        return order[result.item.rarity] > order[best] ? result.item.rarity : best;
+      }, 'Common');
+      if (bestRarity === 'Legendary') soundManager.playLegendary();
+      else soundManager.playRare();
     }
-  };
+  }, [checkAchievements]);
 
-  // Skip Animation Handler
-  const handleSkipAnimation = () => {
-    if (ripTimeoutRef.current) {
-      clearTimeout(ripTimeoutRef.current);
-    }
-    const bag = BAGS.find(b => b.id === gameState.selectedBagId) || BAGS[0];
-    processRollResults(bag, 1);
-  };
+  const completePendingRip = useCallback(() => {
+    const rip = pendingRipRef.current;
+    if (!rip || rip.completed) return;
 
-  // Deconstruct Items Handler
+    rip.completed = true;
+    pendingRipRef.current = null;
+    setPendingRip(null);
+    processRollResults(rip.bag, rip.count);
+  }, [processRollResults]);
+
   const handleDeconstructItem = (itemId) => {
-    setGameState(prev => {
-      const item = prev.items[itemId];
-      if (!item || item.count <= 1) return prev;
-
+    setGameState((previous) => {
+      const item = previous.items[itemId];
+      if (!item || item.count <= 1) return previous;
       soundManager.playCoin();
-
       return {
-        ...prev,
-        shards: prev.shards + 10,
+        ...previous,
+        shards: previous.shards + 10,
         items: {
-          ...prev.items,
+          ...previous.items,
           [itemId]: { ...item, count: item.count - 1 }
         }
       };
@@ -301,24 +293,22 @@ export default function App() {
   };
 
   const handleDeconstructAll = () => {
-    setGameState(prev => {
+    setGameState((previous) => {
       let extraCount = 0;
-      const updatedItems = { ...prev.items };
+      const updatedItems = { ...previous.items };
 
-      Object.keys(updatedItems).forEach(id => {
+      Object.keys(updatedItems).forEach((id) => {
         if (updatedItems[id].count > 1) {
-          extraCount += (updatedItems[id].count - 1);
+          extraCount += updatedItems[id].count - 1;
           updatedItems[id] = { ...updatedItems[id], count: 1 };
         }
       });
 
-      if (extraCount === 0) return prev;
-
+      if (!extraCount) return previous;
       soundManager.playCoin();
-
       return {
-        ...prev,
-        shards: prev.shards + extraCount * 10,
+        ...previous,
+        shards: previous.shards + extraCount * 10,
         items: updatedItems
       };
     });
@@ -326,96 +316,99 @@ export default function App() {
 
   const handleExchangeShards = (bagId, shardCost) => {
     if (gameState.shards < shardCost) {
-      alert('Bạn không đủ Mảnh Vô Tri!');
+      alert('Bạn không đủ Mảnh Vô Tri.');
       return;
     }
-    const bag = BAGS.find(b => b.id === bagId) || BAGS[0];
-    setGameState(prev => ({ ...prev, shards: prev.shards - shardCost }));
-    executeRip(bag, 1);
+    const bag = BAGS.find((entry) => entry.id === bagId) || BAGS[0];
+    setGameState((previous) => ({ ...previous, shards: previous.shards - shardCost }));
+    beginRip(bag, 1);
   };
 
-  // Shop Buy Handler
   const handleBuyShopItem = (shopItem) => {
     if (gameState.coins < shopItem.price) {
-      alert('Bạn không đủ xu!');
+      alert('Bạn không đủ xu.');
       return;
     }
-
     soundManager.playCoin();
-
-    setGameState(prev => ({
-      ...prev,
-      coins: prev.coins - shopItem.price,
-      shopOwned: [...prev.shopOwned, shopItem.id]
+    setGameState((previous) => ({
+      ...previous,
+      coins: previous.coins - shopItem.price,
+      shopOwned: [...previous.shopOwned, shopItem.id]
     }));
   };
 
-  // Quest Claiming
   const handleClaimQuest = (questId) => {
-    setGameState(prev => {
-      const q = prev.quests[questId];
-      if (!q || q.claimed || q.progress < q.target) return prev;
+    setGameState((previous) => {
+      const quest = previous.quests[questId];
+      if (!quest || quest.claimed || quest.progress < quest.target) return previous;
       soundManager.playCoin();
       return {
-        ...prev,
-        coins: prev.coins + q.reward,
+        ...previous,
+        coins: previous.coins + quest.reward,
         quests: {
-          ...prev.quests,
-          [questId]: { ...q, claimed: true }
+          ...previous.quests,
+          [questId]: { ...quest, claimed: true }
         }
       };
     });
   };
 
-  // Free Coins Claiming
   const handleClaimFreeCoins = () => {
     soundManager.playCoin();
-    setGameState(prev => ({
-      ...prev,
-      coins: prev.coins + 100,
+    setGameState((previous) => ({
+      ...previous,
+      coins: previous.coins + 100,
       lastFreeClaimTime: Date.now()
     }));
   };
 
-  // Toggle Item Favorite
   const handleToggleFavorite = (itemId) => {
-    setGameState(prev => ({
-      ...prev,
+    setGameState((previous) => ({
+      ...previous,
       items: {
-        ...prev.items,
-        [itemId]: { ...prev.items[itemId], isFavorite: !prev.items[itemId].isFavorite }
+        ...previous.items,
+        [itemId]: {
+          ...previous.items[itemId],
+          isFavorite: !previous.items[itemId].isFavorite
+        }
       }
     }));
   };
 
-  const selectedBag = BAGS.find(b => b.id === gameState.selectedBagId) || BAGS[0];
-  const unlockedCount = Object.values(gameState.items).filter(i => i.unlocked).length;
+  const selectedBag = BAGS.find((bag) => bag.id === gameState.selectedBagId) || BAGS[0];
+  const unlockedCount = Object.values(gameState.items).filter((item) => item.unlocked).length;
   const totalItemsCount = Object.keys(gameState.items).length;
 
   return (
     <div className="app-container" style={{ padding: '1.2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100vh', justifyContent: 'space-between', gap: '1.5rem' }}>
-      
-      {/* Onboarding Tutorial */}
       {showTutorial && (
-        <TutorialOverlay 
+        <TutorialOverlay
           onComplete={() => {
             setShowTutorial(false);
-            setGameState(prev => ({ ...prev, tutorialCompleted: true }));
-          }} 
+            setGameState((previous) => ({ ...previous, tutorialCompleted: true }));
+          }}
         />
       )}
 
-      {/* Canvas Particle Effect */}
+      {pendingRip && (
+        <UnboxingStage
+          key={pendingRip.id}
+          bag={pendingRip.bag}
+          count={pendingRip.count}
+          onComplete={completePendingRip}
+          onSkip={completePendingRip}
+        />
+      )}
+
       {singleResultData && (
-        <ParticlesCanvas 
-          trigger={particleTrigger} 
-          rarity={singleResultData.item.rarity} 
-          enabled={gameState.settings.particles} 
+        <ParticlesCanvas
+          trigger={particleTrigger}
+          rarity={singleResultData.item.rarity}
+          enabled={gameState.settings.particles}
         />
       )}
 
-      {/* Header */}
-      <Header 
+      <Header
         coins={gameState.coins}
         shards={gameState.shards}
         level={gameState.level}
@@ -433,16 +426,17 @@ export default function App() {
         onOpenHistory={() => setActiveModal('history')}
         onOpenSettings={() => setActiveModal('settings')}
         soundEnabled={gameState.settings.sound}
-        onToggleSound={() => setGameState(prev => ({ ...prev, settings: { ...prev.settings, sound: !prev.settings.sound } }))}
+        onToggleSound={() => setGameState((previous) => ({
+          ...previous,
+          settings: { ...previous.settings, sound: !previous.settings.sound }
+        }))}
       />
 
-      {/* Main Bag Selector & Rip UI */}
       <main style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <BagSelector 
+        <BagSelector
           selectedBagId={gameState.selectedBagId}
           onSelectBag={handleSelectBag}
-          onRipBag={executeRip}
-          onSkipAnimation={handleSkipAnimation}
+          onRipBag={beginRip}
           isOpening={isOpening}
           coins={gameState.coins}
           playerLevel={gameState.level}
@@ -450,14 +444,13 @@ export default function App() {
         />
       </main>
 
-      {/* Modals */}
       {singleResultData && (
-        <ResultModal 
+        <ResultModal
           resultData={singleResultData}
           onClose={() => setSingleResultData(null)}
           onRipAgain={() => {
             setSingleResultData(null);
-            executeRip(selectedBag, 1);
+            beginRip(selectedBag, 1);
           }}
           onOpenInventory={() => {
             setSingleResultData(null);
@@ -467,19 +460,20 @@ export default function App() {
       )}
 
       {multiResultsData && (
-        <MultiResultModal 
+        <MultiResultModal
           multiResults={multiResultsData}
           bag={selectedBag}
           onClose={() => setMultiResultsData(null)}
           onRipAgain={() => {
+            const count = multiResultsData.length;
             setMultiResultsData(null);
-            executeRip(selectedBag, multiResultsData.length);
+            beginRip(selectedBag, count);
           }}
         />
       )}
 
       {activeModal === 'profile' && (
-        <ProfileModal 
+        <ProfileModal
           profile={gameState.profile}
           level={gameState.level}
           exp={gameState.exp}
@@ -490,13 +484,13 @@ export default function App() {
           totalCount={totalItemsCount}
           shopOwned={gameState.shopOwned}
           itemsMap={gameState.items}
-          onUpdateProfile={(p) => setGameState(prev => ({ ...prev, profile: p }))}
+          onUpdateProfile={(profile) => setGameState((previous) => ({ ...previous, profile }))}
           onClose={() => setActiveModal(null)}
         />
       )}
 
       {activeModal === 'shop' && (
-        <ShopModal 
+        <ShopModal
           coins={gameState.coins}
           shopOwned={gameState.shopOwned}
           onBuyItem={handleBuyShopItem}
@@ -505,7 +499,7 @@ export default function App() {
       )}
 
       {activeModal === 'collections' && (
-        <CollectionsModal 
+        <CollectionsModal
           itemsMap={gameState.items}
           achievementsMap={gameState.achievements}
           onClose={() => setActiveModal(null)}
@@ -513,7 +507,7 @@ export default function App() {
       )}
 
       {activeModal === 'inventory' && (
-        <InventoryModal 
+        <InventoryModal
           itemsMap={gameState.items}
           onClose={() => setActiveModal(null)}
           onToggleFavorite={handleToggleFavorite}
@@ -521,7 +515,7 @@ export default function App() {
       )}
 
       {activeModal === 'recycle' && (
-        <RecycleModal 
+        <RecycleModal
           itemsMap={gameState.items}
           shards={gameState.shards}
           onDeconstructItem={handleDeconstructItem}
@@ -532,7 +526,7 @@ export default function App() {
       )}
 
       {activeModal === 'quests' && (
-        <QuestsModal 
+        <QuestsModal
           questsMap={gameState.quests}
           onClaimQuest={handleClaimQuest}
           lastFreeClaimTime={gameState.lastFreeClaimTime}
@@ -542,27 +536,33 @@ export default function App() {
       )}
 
       {activeModal === 'achievements' && (
-        <AchievementsModal 
+        <AchievementsModal
           achievementsMap={gameState.achievements}
           onClose={() => setActiveModal(null)}
         />
       )}
 
       {activeModal === 'history' && (
-        <HistoryModal 
+        <HistoryModal
           historyLog={gameState.historyLog}
-          onClearHistory={() => setGameState(prev => ({ ...prev, historyLog: [] }))}
+          onClearHistory={() => setGameState((previous) => ({ ...previous, historyLog: [] }))}
           onClose={() => setActiveModal(null)}
         />
       )}
 
       {activeModal === 'settings' && (
-        <SettingsModal 
+        <SettingsModal
           settings={gameState.settings}
           performanceMode={gameState.performanceMode}
-          onToggleSound={() => setGameState(prev => ({ ...prev, settings: { ...prev.settings, sound: !prev.settings.sound } }))}
-          onToggleParticles={() => setGameState(prev => ({ ...prev, settings: { ...prev.settings, particles: !prev.settings.particles } }))}
-          onChangePerformanceMode={(mode) => setGameState(prev => ({ ...prev, performanceMode: mode }))}
+          onToggleSound={() => setGameState((previous) => ({
+            ...previous,
+            settings: { ...previous.settings, sound: !previous.settings.sound }
+          }))}
+          onToggleParticles={() => setGameState((previous) => ({
+            ...previous,
+            settings: { ...previous.settings, particles: !previous.settings.particles }
+          }))}
+          onChangePerformanceMode={(performanceMode) => setGameState((previous) => ({ ...previous, performanceMode }))}
           onResetData={() => {
             const newState = resetState();
             setGameState(newState);
@@ -575,7 +575,7 @@ export default function App() {
             const imported = importSaveJson(jsonText);
             if (imported) {
               setGameState(imported);
-              alert('Nhập dữ liệu thành công!');
+              alert('Nhập dữ liệu thành công.');
               setActiveModal(null);
             }
           }}
@@ -592,9 +592,8 @@ export default function App() {
         <AdminSimModal onClose={() => setActiveModal(null)} />
       )}
 
-      {/* Footer */}
-      <footer style={{ fontSize: '0.8rem', color: '#64748b', textAlign: 'center' }}>
-        Xé Túi Mù Vô Tri Web Game v2.5 • Full Systems Active • Auto-saved
+      <footer style={{ fontSize: '0.76rem', color: '#64748b', textAlign: 'center', padding: '6px 0 12px' }}>
+        Xé Túi Mù Vô Tri v3.0 · Interactive Tear Edition · Tự động lưu
       </footer>
     </div>
   );
