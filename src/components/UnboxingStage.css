@@ -1,0 +1,22 @@
+.unbox-inner-glow {
+  opacity: var(--tear-opacity, 0);
+  transform: scale(var(--tear-scale, 0.45));
+}
+
+.unbox-phase-dragging .unbox-fragment-top {
+  transform: translateX(var(--tear-top-x, 0px)) rotate(var(--tear-top-rotation, 0deg));
+  filter: brightness(var(--tear-brightness, 1));
+}
+
+.unbox-phase-dragging .unbox-fragment-bottom {
+  transform: translateX(var(--tear-bottom-x, 0px));
+}
+
+.unbox-tear-line path {
+  stroke-dashoffset: var(--tear-dash-offset, 360);
+}
+
+.unbox-pull-tab {
+  left: var(--tear-tab-left, -4%);
+  transform: translate(-50%, -50%) rotate(var(--tear-tab-rotation, 0deg));
+}
