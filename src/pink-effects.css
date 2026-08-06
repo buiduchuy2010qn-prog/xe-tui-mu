@@ -1,0 +1,221 @@
+.page-noise::before,
+.page-noise::after {
+  content: '';
+  position: fixed;
+  inset: -15%;
+  pointer-events: none;
+}
+
+.page-noise::before {
+  opacity: .52;
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(255,255,255,.95) 0 2px, transparent 3px),
+    radial-gradient(circle at 22% 70%, rgba(250,103,164,.65) 0 3px, transparent 4px),
+    radial-gradient(circle at 34% 35%, rgba(255,255,255,.9) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 47% 84%, rgba(236,78,145,.5) 0 2.5px, transparent 4px),
+    radial-gradient(circle at 61% 18%, rgba(255,255,255,.95) 0 2px, transparent 3px),
+    radial-gradient(circle at 74% 62%, rgba(247,111,169,.58) 0 3px, transparent 4px),
+    radial-gradient(circle at 88% 28%, rgba(255,255,255,.94) 0 2px, transparent 3px),
+    radial-gradient(circle at 93% 82%, rgba(229,71,139,.5) 0 2.5px, transparent 4px);
+  background-size: 310px 310px, 370px 370px, 260px 260px, 430px 430px, 330px 330px, 390px 390px, 280px 280px, 460px 460px;
+  animation: sparkleScroll 18s linear infinite;
+}
+
+.page-noise::after {
+  opacity: .22;
+  background:
+    radial-gradient(ellipse at center, rgba(255,255,255,.92) 0 14%, transparent 15%) 12% 72% / 48px 38px no-repeat,
+    radial-gradient(ellipse at center, rgba(255,151,193,.8) 0 14%, transparent 15%) 79% 22% / 42px 34px no-repeat,
+    radial-gradient(ellipse at center, rgba(255,255,255,.85) 0 13%, transparent 14%) 56% 88% / 36px 29px no-repeat,
+    radial-gradient(ellipse at center, rgba(236,87,149,.66) 0 12%, transparent 13%) 91% 66% / 32px 26px no-repeat;
+  filter: blur(.2px) drop-shadow(0 8px 16px rgba(190,65,123,.18));
+  animation: heartDrift 13s ease-in-out infinite alternate;
+}
+
+.bag-section,
+.detail-grid,
+.earn-ribbon {
+  animation: sectionReveal .65s cubic-bezier(.2,.9,.2,1) both;
+}
+
+.bag-section { animation-delay: .08s; }
+.detail-grid { animation-delay: .16s; }
+.earn-ribbon { animation-delay: .24s; }
+
+.bag-catalog-grid .bag-choice {
+  animation: catalogCardIn .55s cubic-bezier(.2,.9,.2,1) both;
+}
+
+.bag-catalog-grid .bag-choice:nth-child(2n) { animation-delay: .04s; }
+.bag-catalog-grid .bag-choice:nth-child(3n) { animation-delay: .08s; }
+.bag-catalog-grid .bag-choice:nth-child(4n) { animation-delay: .12s; }
+
+.rate-row i {
+  position: relative;
+  overflow: hidden;
+}
+
+.rate-row i::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.8), transparent);
+  transform: translateX(-130%);
+  animation: rateGlint 3s ease-in-out infinite;
+}
+
+.earn-hero-visual,
+.tutorial-visual,
+.catch-intro-packs {
+  animation: visualBob 4.2s ease-in-out infinite;
+}
+
+.earn-method-grid article:nth-child(odd),
+.daily-reward-grid > div:nth-child(odd) {
+  animation: tinyFloat 4.8s ease-in-out infinite;
+}
+
+.earn-method-grid article:nth-child(even),
+.daily-reward-grid > div:nth-child(even) {
+  animation: tinyFloat 4.8s ease-in-out -2.4s infinite;
+}
+
+.favorite-button.active {
+  animation: heartBeat 1.35s ease-in-out infinite;
+}
+
+.falling-catchable .package-visual {
+  animation: fallingSpin 1.8s ease-in-out infinite !important;
+}
+
+.catch-common { animation: fallGlowCommon 1.8s ease-in-out infinite alternate; }
+.catch-rare { animation: fallGlowRare 1.35s ease-in-out infinite alternate; }
+.catch-epic { animation: fallGlowEpic 1s ease-in-out infinite alternate; }
+.catch-legendary { animation: fallGlowLegendary .72s ease-in-out infinite alternate; }
+
+.tutorial-hand {
+  animation: tutorialHand 1.45s ease-in-out infinite !important;
+}
+
+.tutorial-burst {
+  animation: tutorialBurst 2s ease-out infinite !important;
+}
+
+.reveal-panel.ready .item-visual-large {
+  animation: prizeEntrance .8s cubic-bezier(.15,.9,.15,1.2) both, prizeFloat 3.8s ease-in-out .8s infinite;
+}
+
+@keyframes sparkleScroll {
+  from { transform: translate3d(0, 0, 0) rotate(0deg); }
+  to { transform: translate3d(35px, -95px, 0) rotate(4deg); }
+}
+
+@keyframes heartDrift {
+  from { transform: translate3d(-18px, 20px, 0) rotate(-4deg) scale(.92); }
+  to { transform: translate3d(26px, -36px, 0) rotate(7deg) scale(1.08); }
+}
+
+@keyframes sectionReveal {
+  from { opacity: 0; transform: translateY(24px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes catalogCardIn {
+  from { opacity: 0; transform: translateY(18px) rotate(-1deg) scale(.96); }
+  to { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
+}
+
+@keyframes rateGlint {
+  0%, 52% { transform: translateX(-130%); opacity: 0; }
+  65% { opacity: 1; }
+  82%, 100% { transform: translateX(130%); opacity: 0; }
+}
+
+@keyframes visualBob {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-8px) rotate(1deg); }
+}
+
+@keyframes tinyFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes heartBeat {
+  0%, 100% { transform: scale(1); }
+  30% { transform: scale(1.16); }
+  48% { transform: scale(.98); }
+  65% { transform: scale(1.1); }
+}
+
+@keyframes fallingSpin {
+  0%, 100% { transform: rotate(-4deg) scale(.92); }
+  50% { transform: rotate(5deg) scale(1.04); }
+}
+
+@keyframes fallGlowCommon {
+  from { filter: drop-shadow(0 8px 10px rgba(220,112,158,.15)); }
+  to { filter: drop-shadow(0 12px 16px rgba(220,112,158,.28)); }
+}
+
+@keyframes fallGlowRare {
+  from { filter: drop-shadow(0 8px 12px rgba(75,170,255,.26)); }
+  to { filter: drop-shadow(0 14px 22px rgba(75,170,255,.55)); }
+}
+
+@keyframes fallGlowEpic {
+  from { filter: drop-shadow(0 10px 16px rgba(167,77,255,.34)); }
+  to { filter: drop-shadow(0 16px 28px rgba(205,91,255,.7)); }
+}
+
+@keyframes fallGlowLegendary {
+  from { filter: drop-shadow(0 10px 18px rgba(255,187,59,.45)); }
+  to { filter: drop-shadow(0 18px 36px rgba(255,205,84,.95)); }
+}
+
+@keyframes tutorialHand {
+  0%, 100% { transform: translate3d(-14px, 8px, 0) rotate(-10deg); }
+  50% { transform: translate3d(30px, -4px, 0) rotate(8deg); }
+}
+
+@keyframes tutorialBurst {
+  0% { transform: scale(.35) rotate(0deg); opacity: 0; }
+  35% { opacity: .8; }
+  100% { transform: scale(1.45) rotate(35deg); opacity: 0; }
+}
+
+@keyframes prizeEntrance {
+  from { opacity: 0; transform: translateY(35px) scale(.45) rotate(-12deg); }
+  to { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+}
+
+@keyframes prizeFloat {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-10px) rotate(1deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-noise::before,
+  .page-noise::after,
+  .bag-section,
+  .detail-grid,
+  .earn-ribbon,
+  .bag-catalog-grid .bag-choice,
+  .rate-row i::after,
+  .earn-hero-visual,
+  .tutorial-visual,
+  .catch-intro-packs,
+  .earn-method-grid article,
+  .daily-reward-grid > div,
+  .favorite-button.active,
+  .falling-catchable .package-visual,
+  .catch-common,
+  .catch-rare,
+  .catch-epic,
+  .catch-legendary,
+  .tutorial-hand,
+  .tutorial-burst,
+  .reveal-panel.ready .item-visual-large {
+    animation: none !important;
+  }
+}
