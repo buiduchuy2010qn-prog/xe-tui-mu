@@ -1,4 +1,4 @@
-const CACHE_NAME = 'xe-tui-mu-v3-interactive-tear';
+const CACHE_NAME = 'xe-tui-mu-v4-full-rebuild';
 const CORE_ASSETS = ['/manifest.json', '/favicon.svg'];
 
 self.addEventListener('install', (event) => {
