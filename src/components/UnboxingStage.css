@@ -1,22 +1,127 @@
-.unbox-inner-glow {
-  opacity: var(--tear-opacity, 0);
-  transform: scale(var(--tear-scale, 0.45));
+.tear-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(2, 3, 7, .96);
+  touch-action: none;
+  user-select: none;
+  animation: tearOverlayIn .28s ease both;
 }
 
-.unbox-phase-dragging .unbox-fragment-top {
-  transform: translateX(var(--tear-top-x, 0px)) rotate(var(--tear-top-rotation, 0deg));
-  filter: brightness(var(--tear-brightness, 1));
+.tear-backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 43%, color-mix(in srgb, var(--bag-accent, #ffb64a) 19%, transparent), transparent 26rem),
+    radial-gradient(circle at 20% 10%, rgba(33, 172, 220, .11), transparent 25rem),
+    linear-gradient(155deg, #090b12, #030408 70%);
 }
 
-.unbox-phase-dragging .unbox-fragment-bottom {
-  transform: translateX(var(--tear-bottom-x, 0px));
+.tear-backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: .16;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
 }
 
-.unbox-tear-line path {
-  stroke-dashoffset: var(--tear-dash-offset, 360);
+.tear-beam { position: absolute; top: -20vh; width: 30vw; min-width: 220px; height: 140vh; filter: blur(32px); opacity: .16; background: linear-gradient(90deg, transparent, var(--bag-accent), transparent); }
+.tear-beam-left { left: 4%; transform: rotate(18deg); }
+.tear-beam-right { right: 4%; transform: rotate(-18deg); }
+
+.tear-layout { position: relative; z-index: 2; width: min(94vw, 700px); display: grid; justify-items: center; gap: 15px; }
+.tear-heading { text-align: center; }
+.tear-heading > span { display: inline-flex; padding: 6px 11px; border: 1px solid color-mix(in srgb, var(--bag-accent, #ffb64a) 36%, transparent); border-radius: 999px; color: var(--bag-accent, #ffbd59); background: color-mix(in srgb, var(--bag-accent, #ffb64a) 9%, transparent); font-size: .59rem; font-weight: 900; letter-spacing: .16em; }
+.tear-heading h2 { margin-top: 9px; font-family: 'Space Grotesk', sans-serif; font-size: clamp(1.65rem, 5vw, 2.65rem); letter-spacing: -.05em; }
+.tear-heading p { margin-top: 6px; color: #87909e; font-size: .72rem; line-height: 1.6; }
+
+.tear-scene {
+  position: relative;
+  width: min(78vw, 430px);
+  aspect-ratio: .88 / 1;
+  display: grid;
+  place-items: center;
+  perspective: 1000px;
+  filter: drop-shadow(0 35px 42px rgba(0,0,0,.52));
 }
 
-.unbox-pull-tab {
-  left: var(--tear-tab-left, -4%);
-  transform: translate(-50%, -50%) rotate(var(--tear-tab-rotation, 0deg));
+.tear-aura { position: absolute; width: 104%; height: 104%; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--bag-accent) 26%, transparent), transparent 64%); filter: blur(22px); opacity: .48; animation: tearAura 3s ease-in-out infinite; }
+.tear-floor { position: absolute; left: 13%; right: 13%; bottom: 1%; height: 12%; border-radius: 50%; background: color-mix(in srgb, var(--bag-accent) 22%, #000); filter: blur(20px); opacity: .38; transform: perspective(120px) rotateX(64deg); }
+.tear-flash { position: absolute; left: 50%; top: 33%; width: 30%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #fff, #fff4c3 18%, var(--bag-accent) 38%, transparent 72%); filter: blur(9px); opacity: calc(var(--tear-glow, 0) * .68); transform: translate(-50%,-50%) scale(calc(.2 + var(--tear-glow, 0) * .95)); transition: opacity .08s linear, transform .08s linear; }
+
+.tear-bag { position: absolute; width: 78%; height: 82%; overflow: hidden; border: 1px solid color-mix(in srgb, var(--bag-accent) 42%, rgba(255,255,255,.12)); background: linear-gradient(145deg, rgba(255,255,255,.12), rgba(4,6,10,.72)); box-shadow: inset 0 1px rgba(255,255,255,.13); will-change: transform, filter; }
+.tear-bag img { width: 100%; height: 100%; object-fit: cover; filter: saturate(.93) contrast(1.08); pointer-events: none; }
+.tear-bag-top { border-radius: 25% 25% 5% 5% / 16% 16% 4% 4%; clip-path: polygon(0 0,100% 0,100% 28%,94% 31%,88% 26%,82% 32%,76% 27%,69% 33%,62% 26%,55% 32%,48% 27%,41% 33%,34% 26%,27% 32%,20% 27%,13% 32%,7% 27%,0 31%); transform: translateX(var(--tear-top-shift, 0px)) translateY(calc(var(--tear-gap, 0px) * -1)) rotate(var(--tear-tilt, 0deg)); transform-origin: 8% 26%; }
+.tear-bag-bottom { border-radius: 5% 5% 19% 19% / 4% 4% 13% 13%; clip-path: polygon(0 31%,7% 27%,13% 32%,20% 27%,27% 32%,34% 26%,41% 33%,48% 27%,55% 32%,62% 26%,69% 33%,76% 27%,82% 32%,88% 26%,94% 31%,100% 28%,100% 100%,0 100%); transform: translateX(var(--tear-bottom-shift, 0px)) translateY(var(--tear-gap, 0px)); }
+.tear-surface { position: absolute; inset: -35% 42% -35% -30%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent); transform: rotate(16deg); animation: tearSheen 4s ease-in-out infinite; }
+.tear-bag-fallback { width: 100%; height: 100%; display: grid; place-items: center; font-size: clamp(5rem, 18vw, 10rem); background: radial-gradient(circle, color-mix(in srgb, var(--bag-accent) 24%, transparent), rgba(2,4,8,.72)); }
+
+.tear-path { position: absolute; z-index: 4; width: 78%; height: 13%; top: 23.8%; overflow: visible; pointer-events: none; }
+.tear-path path { fill: none; stroke: #fff5ce; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 520; stroke-dashoffset: var(--tear-dash, 520); filter: drop-shadow(0 0 5px #fff) drop-shadow(0 0 14px var(--bag-accent)); transition: stroke-dashoffset .035s linear; }
+
+.tear-handle { position: absolute; z-index: 8; left: clamp(8%, calc(9% + var(--tear-x, 0%)), 86%); top: 26.2%; width: 66px; height: 54px; display: grid; grid-template-columns: 4px 4px 4px 1fr; align-items: center; gap: 4px; padding: 0 9px; border: 1px solid rgba(255,247,216,.7); border-radius: 14px; color: #1b1208; background: linear-gradient(145deg, #fff5ce, #ffc45f 58%, #f1841f); box-shadow: 0 11px 28px rgba(244,130,25,.35), 0 0 26px color-mix(in srgb, var(--bag-accent) 32%, transparent), inset 0 1px rgba(255,255,255,.8); transform: translate(-50%,-50%) rotate(calc(var(--tear-progress, 0) * .035deg)); cursor: grab; touch-action: none; transition: left .035s linear, transform .08s linear; }
+.tear-handle:active { cursor: grabbing; }
+.tear-handle:disabled { cursor: default; }
+.tear-handle i { width: 3px; height: 18px; border-radius: 4px; background: rgba(80,43,9,.32); }
+.tear-handle span { margin-left: 3px; font-size: .58rem; font-weight: 1000; letter-spacing: .08em; }
+
+.tear-hand-guide { position: absolute; z-index: 10; left: 4%; top: 32%; opacity: 0; pointer-events: none; transition: opacity .2s ease; }
+.tear-hand-guide.visible { opacity: 1; animation: handGuide 2s ease-in-out infinite; }
+.tear-hand-guide span { display: block; font-size: 2.2rem; transform: rotate(-18deg); filter: drop-shadow(0 8px 8px rgba(0,0,0,.5)); }
+
+.phase-returning .tear-bag-top, .phase-returning .tear-bag-bottom, .phase-returning .tear-handle { transition: transform .42s cubic-bezier(.2,.9,.3,1), left .42s cubic-bezier(.2,.9,.3,1); }
+.phase-tearing .tear-bag-top { animation: ripTop .54s cubic-bezier(.15,.75,.2,1) both; }
+.phase-tearing .tear-bag-bottom { animation: ripBottom .54s cubic-bezier(.15,.75,.2,1) both; }
+.phase-tearing .tear-handle { animation: handleFly .55s cubic-bezier(.2,.8,.2,1) both; }
+.phase-tearing .tear-path { animation: pathFlash .55s ease both; }
+.phase-bursting .tear-bag-top { animation: fragmentTopFly 1.05s cubic-bezier(.15,.75,.2,1) both; }
+.phase-bursting .tear-bag-bottom { animation: fragmentBottomFly 1.05s cubic-bezier(.15,.75,.2,1) both; }
+.phase-bursting .tear-flash { animation: burstFlash .9s cubic-bezier(.1,.8,.2,1) both; }
+.phase-bursting .tear-aura { animation: auraBurst .9s ease both; }
+
+.tear-fragment { position: absolute; z-index: 7; left: 50%; top: 32%; width: var(--fragment-size); height: calc(var(--fragment-size) * .65); border-radius: 2px 5px 2px 4px; background: linear-gradient(145deg, #fff0b0, var(--bag-accent)); box-shadow: 0 0 8px color-mix(in srgb, var(--bag-accent) 55%, transparent); opacity: 0; pointer-events: none; }
+.phase-bursting .tear-fragment { animation: fragmentBurst 1.1s cubic-bezier(.1,.7,.2,1) var(--fragment-delay) both; }
+
+.tear-meter { width: min(84vw, 470px); display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; }
+.tear-meter > div { height: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,.06); border-radius: 999px; background: rgba(255,255,255,.05); box-shadow: inset 0 1px 3px rgba(0,0,0,.4); }
+.tear-meter > div i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #25c6ec, #8d70ff 45%, #ffb33d 80%, #fff1bc); box-shadow: 0 0 15px #ffb33d; transition: width .04s linear; }
+.tear-meter > span { min-width: 54px; color: #8b94a2; text-align: right; font-family: 'Space Grotesk', sans-serif; font-size: .64rem; font-weight: 800; }
+.tear-instruction { min-height: 30px; display: flex; align-items: center; gap: 9px; color: #9aa3b0; font-size: .68rem; }
+.tear-pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--bag-accent); box-shadow: 0 0 0 0 color-mix(in srgb, var(--bag-accent) 55%, transparent); animation: tearPulse 1.5s ease-out infinite; }
+.tear-hint { color: #666f7d; font-size: .61rem; animation: hintIn .3s ease both; }
+.tear-hint b { color: #ffc15e; }
+
+@keyframes tearOverlayIn { from { opacity: 0; } }
+@keyframes tearAura { 0%,100% { transform: scale(.92); opacity: .35; } 50% { transform: scale(1.08); opacity: .58; } }
+@keyframes tearSheen { 0%,25% { transform: translateX(-60%) rotate(16deg); opacity: 0; } 45% { opacity: .8; } 72%,100% { transform: translateX(280%) rotate(16deg); opacity: 0; } }
+@keyframes handGuide { 0%,100% { transform: translate(0,10px); opacity: .45; } 55% { transform: translate(160px,2px); opacity: 1; } 75% { opacity: 0; } }
+@keyframes ripTop { 0% { transform: translateY(-4px) rotate(-1deg); } 35% { transform: translate(12px,-8px) rotate(-4deg); } 100% { transform: translate(30px,-22px) rotate(-9deg); } }
+@keyframes ripBottom { 0% { transform: translateY(2px); } 100% { transform: translate(-5px,15px) rotate(1deg); } }
+@keyframes handleFly { to { transform: translate(120px,-85px) rotate(130deg) scale(.65); opacity: 0; } }
+@keyframes pathFlash { 0% { opacity: 1; } 45% { opacity: 1; filter: brightness(2.6); } 100% { opacity: 0; } }
+@keyframes fragmentTopFly { 0% { transform: translate(30px,-22px) rotate(-9deg); opacity: 1; } 100% { transform: translate(240px,-270px) rotate(65deg) scale(.76); opacity: 0; } }
+@keyframes fragmentBottomFly { 0% { transform: translate(-5px,15px); opacity: 1; } 100% { transform: translate(-190px,270px) rotate(-35deg) scale(.78); opacity: 0; } }
+@keyframes burstFlash { 0% { opacity: .1; transform: translate(-50%,-50%) scale(.25); } 28% { opacity: 1; transform: translate(-50%,-50%) scale(1.25); } 100% { opacity: 0; transform: translate(-50%,-50%) scale(4.4); } }
+@keyframes auraBurst { 0% { transform: scale(.8); opacity: .45; } 45% { transform: scale(1.4); opacity: .85; } 100% { transform: scale(2.1); opacity: 0; } }
+@keyframes fragmentBurst { 0% { opacity: 0; transform: rotate(var(--fragment-angle)) translateX(0) rotate(0); } 18% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--fragment-angle)) translateX(var(--fragment-distance)) rotate(var(--fragment-rotate)); } }
+@keyframes tearPulse { 70% { box-shadow: 0 0 0 8px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+@keyframes hintIn { from { opacity: 0; transform: translateY(5px); } }
+
+@media (max-width: 520px) {
+  .tear-overlay { padding: 12px; }
+  .tear-layout { width: 100%; gap: 11px; }
+  .tear-heading p { padding: 0 14px; font-size: .66rem; }
+  .tear-scene { width: min(92vw, 410px); }
+  .tear-handle { width: 62px; height: 50px; }
+  .tear-instruction { padding: 0 15px; text-align: center; font-size: .62rem; }
+  .tear-hint { text-align: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tear-aura, .tear-surface, .tear-hand-guide { animation: none !important; }
 }
