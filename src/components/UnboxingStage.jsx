@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { soundManager } from '../utils/sound';
+import './UnboxingStage.css';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -18,8 +19,20 @@ export function UnboxingStage({ bag, count = 1, onComplete, onSkip }) {
   const startXRef = useRef(0);
   const pointerIdRef = useRef(null);
   const completedRef = useRef(false);
+  const phaseRef = useRef('ready');
+  const progressRef = useRef(0);
   const resetTimerRef = useRef(null);
   const timersRef = useRef([]);
+
+  const changePhase = (nextPhase) => {
+    phaseRef.current = nextPhase;
+    setPhase(nextPhase);
+  };
+
+  const changeProgress = (nextProgress) => {
+    progressRef.current = nextProgress;
+    setProgress(nextProgress);
+  };
 
   const shards = useMemo(() => Array.from({ length: 22 }, (_, index) => ({
     id: index,
@@ -29,24 +42,6 @@ export function UnboxingStage({ bag, count = 1, onComplete, onSkip }) {
     size: 5 + Math.random() * 10
   })), []);
 
-  useEffect(() => {
-    const skipTimer = window.setTimeout(() => setCanSkip(true), 850);
-    timersRef.current.push(skipTimer);
-
-    if (count > 1) {
-      const autoTimer = window.setTimeout(() => {
-        beginTear();
-      }, 1050);
-      timersRef.current.push(autoTimer);
-    }
-
-    return () => {
-      timersRef.current.forEach(window.clearTimeout);
-      window.clearTimeout(resetTimerRef.current);
-      soundManager.stopStretch();
-    };
-  }, []);
-
   const finishOnce = () => {
     if (completedRef.current) return;
     completedRef.current = true;
@@ -55,10 +50,10 @@ export function UnboxingStage({ bag, count = 1, onComplete, onSkip }) {
   };
 
   const beginTear = () => {
-    if (completedRef.current || phase === 'tearing' || phase === 'bursting') return;
+    if (completedRef.current || ['tearing', 'bursting'].includes(phaseRef.current)) return;
 
-    setProgress(100);
-    setPhase('tearing');
+    changeProgress(100);
+    changePhase('tearing');
     soundManager.stopStretch();
     soundManager.playRip();
 
@@ -67,7 +62,7 @@ export function UnboxingStage({ bag, count = 1, onComplete, onSkip }) {
     }
 
     const burstTimer = window.setTimeout(() => {
-      setPhase('bursting');
+      changePhase('bursting');
       soundManager.playWhoosh();
     }, 420);
 
@@ -75,56 +70,82 @@ export function UnboxingStage({ bag, count = 1, onComplete, onSkip }) {
     timersRef.current.push(burstTimer, finishTimer);
   };
 
+  useEffect(() => {
+    const skipTimer = window.setTimeout(() => setCanSkip(true), 850);
+    timersRef.current.push(skipTimer);
+
+    if (count > 1) {
+      const autoTimer = window.setTimeout(beginTear, 1050);
+      timersRef.current.push(autoTimer);
+    }
+
+    return () => {
+      timersRef.current.forEach((timer) => window.clearTimeout(timer));
+      window.clearTimeout(resetTimerRef.current);
+      soundManager.stopStretch();
+    };
+  }, []);
+
   const handlePointerDown = (event) => {
-    if (phase === 'tearing' || phase === 'bursting') return;
+    if (['tearing', 'bursting'].includes(phaseRef.current)) return;
 
     pointerIdRef.current = event.pointerId;
     startXRef.current = event.clientX;
     event.currentTarget.setPointerCapture?.(event.pointerId);
-    setPhase('dragging');
+    changePhase('dragging');
     soundManager.playGrab();
   };
 
   const handlePointerMove = (event) => {
-    if (phase !== 'dragging' || pointerIdRef.current !== event.pointerId) return;
+    if (phaseRef.current !== 'dragging' || pointerIdRef.current !== event.pointerId) return;
 
     const viewportFactor = Math.min(230, Math.max(150, window.innerWidth * 0.46));
     const nextProgress = clamp(((event.clientX - startXRef.current) / viewportFactor) * 100, 0, 100);
-    setProgress(nextProgress);
+    changeProgress(nextProgress);
     soundManager.playStretch(nextProgress / 100);
 
-    if (nextProgress >= 82) {
-      beginTear();
-    }
+    if (nextProgress >= 82) beginTear();
   };
 
   const handlePointerEnd = (event) => {
-    if (pointerIdRef.current !== event.pointerId || phase !== 'dragging') return;
+    if (pointerIdRef.current !== event.pointerId || phaseRef.current !== 'dragging') return;
 
     event.currentTarget.releasePointerCapture?.(event.pointerId);
     pointerIdRef.current = null;
     soundManager.stopStretch();
 
-    if (progress >= 72) {
+    if (progressRef.current >= 72) {
       beginTear();
       return;
     }
 
-    setPhase('returning');
-    setProgress(0);
+    changePhase('returning');
+    changeProgress(0);
     if (navigator.vibrate) navigator.vibrate(9);
-    resetTimerRef.current = window.setTimeout(() => setPhase('ready'), 360);
+    resetTimerRef.current = window.setTimeout(() => changePhase('ready'), 360);
   };
 
   const skip = () => {
     if (completedRef.current) return;
     completedRef.current = true;
-    timersRef.current.forEach(window.clearTimeout);
+    timersRef.current.forEach((timer) => window.clearTimeout(timer));
     soundManager.stopStretch();
     onSkip();
   };
 
-  const progressStyle = { '--tear-progress': `${progress}%` };
+  const normalizedProgress = progress / 100;
+  const progressStyle = {
+    '--tear-progress': `${progress}%`,
+    '--tear-opacity': Math.min(0.92, normalizedProgress * 0.84),
+    '--tear-scale': 0.45 + normalizedProgress * 0.84,
+    '--tear-top-x': `${progress * 0.08}px`,
+    '--tear-top-rotation': `${progress * -0.025}deg`,
+    '--tear-brightness': 1 + progress / 260,
+    '--tear-bottom-x': `${progress * -0.025}px`,
+    '--tear-dash-offset': 360 - progress * 3.6,
+    '--tear-tab-left': `${-4 + progress * 0.9}%`,
+    '--tear-tab-rotation': `${progress * 0.04}deg`
+  };
 
   return (
     <div className={`unbox-overlay unbox-phase-${phase}`} role="dialog" aria-modal="true" aria-label={`Đang xé ${bag.name}`}>
