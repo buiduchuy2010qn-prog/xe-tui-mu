@@ -1,0 +1,1 @@
+Chiikawa mascot assets supplied by the site owner for this personal web game.

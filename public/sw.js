@@ -1,4 +1,4 @@
-const CACHE_NAME = 'xe-tui-mu-v6-pink-plaid-motion';
+const CACHE_NAME = 'xe-tui-mu-v7-chiikawa-tomato-mascot';
 const CORE_ASSETS = ['/manifest.json', '/favicon.svg'];
 
 self.addEventListener('install', (event) => {
