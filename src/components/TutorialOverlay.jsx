@@ -2,103 +2,70 @@ import React, { useState } from 'react';
 
 const STEPS = [
   {
-    title: '👋 CHÀO MỪNG ĐẾN VỚI XÉ TÚI MÙ VÔ TRI!',
-    desc: 'Trải nghiệm cảm giác hồi hộp, vui nhộn và vô tri khi tự tay xé mở từng túi mù bí ẩn!',
-    icon: '🛍️'
+    overline: 'BẮT ĐẦU',
+    title: 'Tự tay xé từng chiếc túi mù',
+    desc: 'Chọn túi, giữ mép sáng và kéo sang phải. Túi sẽ rách, bung thành hai mảnh rồi mới hé lộ vật phẩm bên trong.',
+    icon: '✦'
   },
   {
-    title: '🛍️ BƯỚC 1: CHỌN VÀ XÉ TÚI MÙ',
-    desc: 'Có nhiều loại túi như Túi Rác (10xu), Túi Nilon (50xu), Túi Đại Gia (150xu) & Túi Sự Kiện Tết! Bạn có thể chọn xé 1x, 5x hoặc 10x cùng lúc!',
-    icon: '✂️'
+    overline: 'SĂN VẬT PHẨM',
+    title: 'Mỗi túi có một tỷ lệ riêng',
+    desc: 'Túi giá cao có cơ hội ra vật phẩm hiếm hơn. Bộ đếm bảo hiểm giúp bạn không phải xui mãi.',
+    icon: '◆'
   },
   {
-    title: '🎒 BƯỚC 2: THU THẬP & BÁN ĐỒ TRÙNG',
-    desc: 'Sưu tầm 30+ vật phẩm hài hước từ Lõi giấy vệ sinh đến Dép tổ ong tối thượng. Đồ trùng có thể phân giải thành Mảnh Vô Tri!',
-    icon: '📦'
+    overline: 'BỘ SƯU TẬP',
+    title: 'Giữ đồ đẹp, tái chế đồ trùng',
+    desc: 'Kho đồ lưu mọi vật phẩm đã mở. Các bản trùng có thể đổi thành Mảnh Vô Tri để tiếp tục săn túi.',
+    icon: '▣'
   },
   {
-    title: '🏆 BƯỚC 3: NHIỆM VỤ, BỘ SƯ TẬP & SHOP',
-    desc: 'Hoàn thành các Bộ sưu tập chủ đề để nhận danh hiệu sang chảnh, vào Cửa hàng mua khung Profile & hiệu ứng pháo giấy cực chất!',
-    icon: '🌟'
+    overline: 'TIẾN TRÌNH',
+    title: 'Lên cấp, làm nhiệm vụ và mở khóa',
+    desc: 'Mỗi lần xé đều nhận EXP. Hoàn thành nhiệm vụ, thành tích và bộ sưu tập để nhận thêm xu.',
+    icon: '▲'
   }
 ];
 
 export const TutorialOverlay = ({ onComplete }) => {
   const [currentStep, setCurrentStep] = useState(0);
-
   const step = STEPS[currentStep];
+  const isLast = currentStep === STEPS.length - 1;
 
   return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)',
-      display: 'flex', justifyContent: 'center', alignItems: 'center',
-      zIndex: 2000, padding: '1rem'
-    }}>
-      <div className="glass-panel animate-pop-in" style={{
-        padding: '2.2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.2rem',
-        maxWidth: '460px', width: '100%', borderRadius: '28px',
-        border: '2px solid rgba(251,191,36,0.5)', boxShadow: '0 20px 50px rgba(0,0,0,0.8)',
-        background: 'linear-gradient(135deg, rgba(30,27,75,0.95) 0%, rgba(15,23,42,0.95) 100%)'
-      }}>
-        
-        <div style={{ fontSize: '70px', filter: 'drop-shadow(0 4px 10px rgba(251,191,36,0.4))' }}>
-          {step.icon}
+    <div className="tutorial-overlay" role="dialog" aria-modal="true" aria-label="Hướng dẫn tân thủ">
+      <div className="tutorial-card">
+        <div className="tutorial-visual">
+          <span>{step.icon}</span>
+          <div className="tutorial-orbit tutorial-orbit-one" />
+          <div className="tutorial-orbit tutorial-orbit-two" />
         </div>
 
-        <div style={{ textAlign: 'center' }}>
-          <span style={{ fontSize: '0.8rem', color: '#fbbf24', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>
-            Hướng dẫn tân thủ ({currentStep + 1}/{STEPS.length})
-          </span>
-          <h3 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '6px 0 10px 0', color: '#fff' }}>
-            {step.title}
-          </h3>
-          <p style={{ fontSize: '0.9rem', color: '#cbd5e1', lineHeight: '1.5' }}>
-            {step.desc}
-          </p>
+        <div className="tutorial-copy">
+          <span className="tutorial-overline">{step.overline} · {currentStep + 1}/{STEPS.length}</span>
+          <h2>{step.title}</h2>
+          <p>{step.desc}</p>
         </div>
 
-        {/* Step dots */}
-        <div style={{ display: 'flex', gap: '6px' }}>
-          {STEPS.map((_, idx) => (
-            <div 
-              key={idx} 
-              style={{
-                width: idx === currentStep ? '24px' : '8px',
-                height: '8px',
-                borderRadius: '4px',
-                background: idx === currentStep ? '#fbbf24' : 'rgba(255,255,255,0.2)',
-                transition: 'all 0.3s ease'
-              }} 
-            />
+        <div className="tutorial-dots" aria-hidden="true">
+          {STEPS.map((_, index) => (
+            <span key={index} className={index === currentStep ? 'active' : ''} />
           ))}
         </div>
 
-        {/* Action Buttons */}
-        <div style={{ display: 'flex', gap: '0.8rem', width: '100%', marginTop: '0.5rem' }}>
-          <button 
-            className="btn-cute" 
-            style={{ background: 'rgba(255,255,255,0.15)', fontSize: '0.9rem', flex: 1 }}
-            onClick={onComplete}
-          >
-            Bỏ qua ⏩
-          </button>
-
-          <button 
-            className="btn-cute" 
-            style={{ background: 'linear-gradient(135deg, #fbbf24 0%, #d97706 100%)', color: '#000', fontSize: '0.9rem', fontWeight: 800, flex: 1.5 }}
+        <div className="tutorial-actions">
+          <button type="button" className="tutorial-skip" onClick={onComplete}>Bỏ qua</button>
+          <button
+            type="button"
+            className="tutorial-next"
             onClick={() => {
-              if (currentStep < STEPS.length - 1) {
-                setCurrentStep(prev => prev + 1);
-              } else {
-                onComplete();
-              }
+              if (isLast) onComplete();
+              else setCurrentStep((value) => value + 1);
             }}
           >
-            {currentStep < STEPS.length - 1 ? 'Tiếp Theo ▶' : 'Bắt Đầu Chơi! 🎉'}
+            {isLast ? 'Bắt đầu chơi' : 'Tiếp theo'}
           </button>
         </div>
-
       </div>
     </div>
   );
