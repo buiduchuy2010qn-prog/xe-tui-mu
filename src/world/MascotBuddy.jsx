@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './MascotBuddy.css';
+import { CHIIKAWA_TOMATO_SRC } from './mascotAsset';
 
 const LINES = {
   idle: ['Xé thêm đi nè~', 'Cà chua may mắn đang ở đây!', 'Biết đâu túi sau ra đồ xịn đó!'],
@@ -94,7 +95,7 @@ export function MascotBuddy() {
   if (minimized) {
     return (
       <button className="mascot-mini" type="button" onClick={() => setMinimized(false)} aria-label="Mở Chiikawa cà chua">
-        <img src="/assets/mascots/chiikawa-tomato.webp" alt="Chiikawa đội cà chua" />
+        <img src={CHIIKAWA_TOMATO_SRC} alt="Chiikawa đội cà chua" />
         <span>!</span>
       </button>
     );
@@ -109,7 +110,7 @@ export function MascotBuddy() {
       </div>
       <button className="mascot-character" type="button" onClick={interact} aria-label="Chạm vào Chiikawa">
         <span className="mascot-halo" />
-        <img src="/assets/mascots/chiikawa-tomato.webp" alt="Chiikawa đội cà chua trong game" />
+        <img src={CHIIKAWA_TOMATO_SRC} alt="Chiikawa đội cà chua trong game" />
         <span className="mascot-tomato" aria-hidden="true"><i /><i /><b /><b /><em /></span>
         <span className="mascot-shadow" />
       </button>
