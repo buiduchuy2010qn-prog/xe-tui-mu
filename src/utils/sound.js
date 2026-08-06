@@ -3,8 +3,8 @@ class SoundEngine {
     this.enabled = true;
     this.ctx = null;
     this.noiseBuffer = null;
-    this.lastStretchAt = 0;
-    this.activeStretchGain = null;
+    this.stretch = null;
+    this.lastCrackle = 0;
   }
 
   setEnabled(value) {
@@ -12,307 +12,265 @@ class SoundEngine {
     if (!this.enabled) this.stopStretch();
   }
 
-  getAudioContext() {
+  getContext() {
     if (typeof window === 'undefined') return null;
-
     if (!this.ctx) {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       if (!AudioContextClass) return null;
       this.ctx = new AudioContextClass();
     }
-
-    if (this.ctx.state === 'suspended') {
-      this.ctx.resume().catch(() => {});
-    }
-
+    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
     return this.ctx;
   }
 
-  getNoiseBuffer(ctx, seconds = 2) {
-    const requiredLength = Math.ceil(ctx.sampleRate * seconds);
-    if (this.noiseBuffer && this.noiseBuffer.length >= requiredLength) return this.noiseBuffer;
-
-    const buffer = ctx.createBuffer(1, requiredLength, ctx.sampleRate);
+  getNoise(ctx) {
+    if (this.noiseBuffer && this.noiseBuffer.sampleRate === ctx.sampleRate) return this.noiseBuffer;
+    const seconds = 3;
+    const buffer = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate);
     const data = buffer.getChannelData(0);
-    let previous = 0;
-
-    for (let index = 0; index < requiredLength; index += 1) {
+    let brown = 0;
+    for (let index = 0; index < data.length; index += 1) {
       const white = Math.random() * 2 - 1;
-      previous = previous * 0.58 + white * 0.42;
-      data[index] = previous;
+      brown = brown * 0.72 + white * 0.28;
+      data[index] = brown * 0.9 + white * 0.1;
     }
-
     this.noiseBuffer = buffer;
     return buffer;
   }
 
-  createNoiseSource(ctx, duration, offset = 0) {
-    const source = ctx.createBufferSource();
-    source.buffer = this.getNoiseBuffer(ctx, Math.max(2, duration + offset + 0.1));
-    source.loop = false;
-    return source;
-  }
-
-  connectWithPan(ctx, node, pan = 0) {
+  connectOutput(ctx, node, pan = 0) {
     if (typeof ctx.createStereoPanner !== 'function') {
       node.connect(ctx.destination);
       return;
     }
-
     const panner = ctx.createStereoPanner();
     panner.pan.value = Math.max(-1, Math.min(1, pan));
     node.connect(panner);
     panner.connect(ctx.destination);
   }
 
-  playNoiseBurst({ duration = 0.08, gainValue = 0.12, frequency = 1800, q = 1.4, pan = 0, type = 'bandpass' } = {}) {
+  noiseBurst({ at = 0, duration = 0.06, gain = 0.08, frequency = 2200, q = 1, type = 'bandpass', pan = 0 } = {}) {
     if (!this.enabled) return;
-
-    try {
-      const ctx = this.getAudioContext();
-      if (!ctx) return;
-      const now = ctx.currentTime;
-      const source = this.createNoiseSource(ctx, duration);
-      const filter = ctx.createBiquadFilter();
-      const gain = ctx.createGain();
-
-      filter.type = type;
-      filter.frequency.setValueAtTime(frequency, now);
-      filter.Q.setValueAtTime(q, now);
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(gainValue, now + Math.min(0.012, duration * 0.22));
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-
-      source.connect(filter);
-      filter.connect(gain);
-      this.connectWithPan(ctx, gain, pan);
-      source.start(now, Math.random() * 0.35, duration + 0.02);
-      source.stop(now + duration + 0.04);
-    } catch (error) {
-      console.warn('Audio noise burst error', error);
-    }
+    const ctx = this.getContext();
+    if (!ctx) return;
+    const start = ctx.currentTime + at;
+    const source = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const volume = ctx.createGain();
+    source.buffer = this.getNoise(ctx);
+    filter.type = type;
+    filter.frequency.setValueAtTime(frequency, start);
+    filter.Q.setValueAtTime(q, start);
+    volume.gain.setValueAtTime(0.0001, start);
+    volume.gain.exponentialRampToValueAtTime(Math.max(0.0002, gain), start + Math.min(0.012, duration * 0.25));
+    volume.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    source.connect(filter);
+    filter.connect(volume);
+    this.connectOutput(ctx, volume, pan);
+    source.start(start, Math.random() * 1.4, duration + 0.03);
+    source.stop(start + duration + 0.04);
   }
 
   playGrab() {
     if (!this.enabled) return;
-    this.playNoiseBurst({ duration: 0.055, gainValue: 0.095, frequency: 1250, q: 0.7, pan: -0.12 });
-    window.setTimeout(() => {
-      this.playNoiseBurst({ duration: 0.045, gainValue: 0.07, frequency: 2400, q: 1.2, pan: 0.12 });
-    }, 34);
+    this.noiseBurst({ duration: 0.045, gain: 0.09, frequency: 980, q: 0.7, pan: -0.15 });
+    this.noiseBurst({ at: 0.032, duration: 0.038, gain: 0.065, frequency: 3200, q: 1.7, pan: 0.1, type: 'highpass' });
   }
 
   playStretch(progress = 0) {
     if (!this.enabled) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+    const value = Math.max(0, Math.min(1, progress));
+    const now = ctx.currentTime;
+
+    if (!this.stretch) {
+      const source = ctx.createBufferSource();
+      const highpass = ctx.createBiquadFilter();
+      const bandpass = ctx.createBiquadFilter();
+      const gain = ctx.createGain();
+      source.buffer = this.getNoise(ctx);
+      source.loop = true;
+      highpass.type = 'highpass';
+      highpass.frequency.value = 350;
+      bandpass.type = 'bandpass';
+      bandpass.Q.value = 1.1;
+      gain.gain.value = 0.0001;
+      source.connect(highpass);
+      highpass.connect(bandpass);
+      bandpass.connect(gain);
+      this.connectOutput(ctx, gain, 0);
+      source.start();
+      this.stretch = { source, highpass, bandpass, gain };
+    }
+
+    const { bandpass, highpass, gain } = this.stretch;
+    bandpass.frequency.setTargetAtTime(650 + value * 3600, now, 0.025);
+    bandpass.Q.setTargetAtTime(0.7 + value * 2.2, now, 0.035);
+    highpass.frequency.setTargetAtTime(250 + value * 1100, now, 0.03);
+    gain.gain.setTargetAtTime(0.012 + value * 0.055, now, 0.018);
+
     const nowMs = performance.now();
-    if (nowMs - this.lastStretchAt < 72) return;
-    this.lastStretchAt = nowMs;
-
-    const normalized = Math.max(0, Math.min(1, progress));
-    this.playNoiseBurst({
-      duration: 0.05 + normalized * 0.035,
-      gainValue: 0.035 + normalized * 0.085,
-      frequency: 900 + normalized * 2600,
-      q: 0.65 + normalized * 1.8,
-      pan: -0.3 + normalized * 0.6
-    });
-
-    if (normalized > 0.48 && Math.random() > 0.55) {
-      this.playNoiseBurst({
-        duration: 0.024,
-        gainValue: 0.035 + normalized * 0.035,
-        frequency: 3600 + Math.random() * 1800,
-        q: 2.8,
-        pan: Math.random() * 0.7 - 0.35,
-        type: 'highpass'
+    if (nowMs - this.lastCrackle > 95 - value * 42) {
+      this.lastCrackle = nowMs;
+      this.noiseBurst({
+        duration: 0.018 + Math.random() * 0.025,
+        gain: 0.02 + value * 0.07,
+        frequency: 2200 + value * 4700 + Math.random() * 800,
+        q: 1.8 + value * 2.6,
+        pan: -0.45 + value * 0.9,
+        type: value > 0.48 ? 'highpass' : 'bandpass'
       });
     }
   }
 
   stopStretch() {
-    if (!this.activeStretchGain || !this.ctx) return;
+    if (!this.stretch || !this.ctx) return;
+    const current = this.stretch;
+    this.stretch = null;
+    const now = this.ctx.currentTime;
     try {
-      const now = this.ctx.currentTime;
-      this.activeStretchGain.gain.cancelScheduledValues(now);
-      this.activeStretchGain.gain.setTargetAtTime(0.0001, now, 0.018);
+      current.gain.gain.cancelScheduledValues(now);
+      current.gain.gain.setTargetAtTime(0.0001, now, 0.022);
+      current.source.stop(now + 0.16);
     } catch (_) {
-      // Ignore already-disconnected nodes.
+      // Nodes may already be stopped after tab suspension.
     }
-    this.activeStretchGain = null;
   }
 
-  playRip() {
+  playRip(material = 'plastic') {
     if (!this.enabled) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+    const presets = {
+      'thin-plastic': { low: 1500, high: 7200, gain: 0.22, duration: 0.72, cracks: 17 },
+      plastic: { low: 1050, high: 5900, gain: 0.24, duration: 0.76, cracks: 15 },
+      foil: { low: 2100, high: 8800, gain: 0.2, duration: 0.68, cracks: 22 },
+      paper: { low: 720, high: 4100, gain: 0.25, duration: 0.82, cracks: 13 }
+    };
+    const preset = presets[material] || presets.plastic;
+    const now = ctx.currentTime;
 
-    try {
-      const ctx = this.getAudioContext();
-      if (!ctx) return;
-      const now = ctx.currentTime;
-      const duration = 0.68;
+    const body = ctx.createBufferSource();
+    const bodyFilter = ctx.createBiquadFilter();
+    const bodyGain = ctx.createGain();
+    body.buffer = this.getNoise(ctx);
+    bodyFilter.type = 'bandpass';
+    bodyFilter.frequency.setValueAtTime(preset.low, now);
+    bodyFilter.frequency.exponentialRampToValueAtTime(preset.high, now + preset.duration * 0.68);
+    bodyFilter.frequency.exponentialRampToValueAtTime(preset.low * 1.25, now + preset.duration);
+    bodyFilter.Q.setValueAtTime(material === 'foil' ? 1.8 : 0.78, now);
+    bodyGain.gain.setValueAtTime(0.0001, now);
+    bodyGain.gain.exponentialRampToValueAtTime(preset.gain, now + 0.018);
+    bodyGain.gain.setValueAtTime(preset.gain * 0.76, now + preset.duration * 0.28);
+    bodyGain.gain.exponentialRampToValueAtTime(0.0001, now + preset.duration);
+    body.connect(bodyFilter);
+    bodyFilter.connect(bodyGain);
+    this.connectOutput(ctx, bodyGain, -0.08);
+    body.start(now, Math.random() * 1.1, preset.duration + 0.03);
+    body.stop(now + preset.duration + 0.05);
 
-      const body = this.createNoiseSource(ctx, duration + 0.08);
-      const bodyFilter = ctx.createBiquadFilter();
-      const bodyGain = ctx.createGain();
-      bodyFilter.type = 'bandpass';
-      bodyFilter.frequency.setValueAtTime(1050, now);
-      bodyFilter.frequency.exponentialRampToValueAtTime(3950, now + duration * 0.72);
-      bodyFilter.frequency.exponentialRampToValueAtTime(1700, now + duration);
-      bodyFilter.Q.setValueAtTime(0.72, now);
-      bodyGain.gain.setValueAtTime(0.0001, now);
-      bodyGain.gain.exponentialRampToValueAtTime(0.22, now + 0.025);
-      bodyGain.gain.setValueAtTime(0.18, now + 0.18);
-      bodyGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-      body.connect(bodyFilter);
-      bodyFilter.connect(bodyGain);
-      this.connectWithPan(ctx, bodyGain, -0.05);
-      body.start(now, Math.random() * 0.4, duration + 0.03);
-      body.stop(now + duration + 0.05);
+    const crisp = ctx.createBufferSource();
+    const crispFilter = ctx.createBiquadFilter();
+    const crispGain = ctx.createGain();
+    crisp.buffer = this.getNoise(ctx);
+    crispFilter.type = 'highpass';
+    crispFilter.frequency.setValueAtTime(preset.high * 0.55, now);
+    crispFilter.frequency.exponentialRampToValueAtTime(Math.min(11000, preset.high * 1.35), now + preset.duration * 0.5);
+    crispGain.gain.setValueAtTime(0.0001, now);
+    crispGain.gain.exponentialRampToValueAtTime(preset.gain * 0.52, now + 0.012);
+    crispGain.gain.exponentialRampToValueAtTime(0.0001, now + preset.duration * 0.72);
+    crisp.connect(crispFilter);
+    crispFilter.connect(crispGain);
+    this.connectOutput(ctx, crispGain, 0.16);
+    crisp.start(now + 0.006, Math.random() * 1.2, preset.duration * 0.75);
+    crisp.stop(now + preset.duration * 0.78);
 
-      const crisp = this.createNoiseSource(ctx, duration * 0.62);
-      const crispFilter = ctx.createBiquadFilter();
-      const crispGain = ctx.createGain();
-      crispFilter.type = 'highpass';
-      crispFilter.frequency.setValueAtTime(2850, now);
-      crispFilter.frequency.exponentialRampToValueAtTime(7600, now + duration * 0.48);
-      crispGain.gain.setValueAtTime(0.0001, now);
-      crispGain.gain.exponentialRampToValueAtTime(0.115, now + 0.012);
-      crispGain.gain.exponentialRampToValueAtTime(0.0001, now + duration * 0.62);
-      crisp.connect(crispFilter);
-      crispFilter.connect(crispGain);
-      this.connectWithPan(ctx, crispGain, 0.16);
-      crisp.start(now + 0.01, Math.random() * 0.5, duration * 0.62);
-      crisp.stop(now + duration * 0.68);
-
-      const crackCount = 13;
-      for (let index = 0; index < crackCount; index += 1) {
-        const at = 0.04 + (index / crackCount) * 0.48 + Math.random() * 0.045;
-        window.setTimeout(() => {
-          this.playNoiseBurst({
-            duration: 0.018 + Math.random() * 0.028,
-            gainValue: 0.045 + Math.random() * 0.07,
-            frequency: 2600 + Math.random() * 4200,
-            q: 1.5 + Math.random() * 2.6,
-            pan: -0.62 + (index / crackCount) * 1.24,
-            type: Math.random() > 0.45 ? 'highpass' : 'bandpass'
-          });
-        }, at * 1000);
-      }
-
-      const thump = ctx.createOscillator();
-      const thumpGain = ctx.createGain();
-      thump.type = 'sine';
-      thump.frequency.setValueAtTime(105, now + 0.42);
-      thump.frequency.exponentialRampToValueAtTime(48, now + 0.58);
-      thumpGain.gain.setValueAtTime(0.0001, now + 0.4);
-      thumpGain.gain.exponentialRampToValueAtTime(0.13, now + 0.43);
-      thumpGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.62);
-      thump.connect(thumpGain);
-      thumpGain.connect(ctx.destination);
-      thump.start(now + 0.4);
-      thump.stop(now + 0.64);
-    } catch (error) {
-      console.warn('Audio playRip error', error);
+    for (let index = 0; index < preset.cracks; index += 1) {
+      const ratio = index / Math.max(1, preset.cracks - 1);
+      this.noiseBurst({
+        at: 0.025 + ratio * preset.duration * 0.66 + Math.random() * 0.025,
+        duration: 0.012 + Math.random() * 0.03,
+        gain: 0.035 + Math.random() * 0.08,
+        frequency: preset.low * 1.4 + ratio * preset.high + Math.random() * 1300,
+        q: 1.6 + Math.random() * 3,
+        pan: -0.7 + ratio * 1.4,
+        type: Math.random() > 0.38 ? 'highpass' : 'bandpass'
+      });
     }
+
+    const snap = ctx.createOscillator();
+    const snapGain = ctx.createGain();
+    snap.type = 'sine';
+    snap.frequency.setValueAtTime(material === 'paper' ? 118 : 145, now + preset.duration * 0.58);
+    snap.frequency.exponentialRampToValueAtTime(42, now + preset.duration * 0.82);
+    snapGain.gain.setValueAtTime(0.0001, now + preset.duration * 0.56);
+    snapGain.gain.exponentialRampToValueAtTime(0.12, now + preset.duration * 0.59);
+    snapGain.gain.exponentialRampToValueAtTime(0.0001, now + preset.duration * 0.86);
+    snap.connect(snapGain);
+    snapGain.connect(ctx.destination);
+    snap.start(now + preset.duration * 0.56);
+    snap.stop(now + preset.duration * 0.9);
   }
 
   playWhoosh() {
     if (!this.enabled) return;
-    try {
-      const ctx = this.getAudioContext();
-      if (!ctx) return;
-      const now = ctx.currentTime;
-      const source = this.createNoiseSource(ctx, 0.7);
-      const filter = ctx.createBiquadFilter();
-      const gain = ctx.createGain();
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(420, now);
-      filter.frequency.exponentialRampToValueAtTime(4600, now + 0.34);
-      filter.frequency.exponentialRampToValueAtTime(1100, now + 0.68);
-      filter.Q.value = 0.8;
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.13, now + 0.18);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
-      source.connect(filter);
-      filter.connect(gain);
-      gain.connect(ctx.destination);
-      source.start(now, Math.random() * 0.4, 0.72);
-      source.stop(now + 0.74);
-    } catch (error) {
-      console.warn('Audio playWhoosh error', error);
-    }
+    const ctx = this.getContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const source = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+    source.buffer = this.getNoise(ctx);
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(260, now);
+    filter.frequency.exponentialRampToValueAtTime(4800, now + 0.42);
+    filter.Q.value = 0.6;
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.17, now + 0.12);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    source.start(now, Math.random(), 0.58);
+    source.stop(now + 0.6);
   }
 
-  playToneSequence(notes, { type = 'sine', volume = 0.22, spacing = 0.08, length = 0.28 } = {}) {
-    if (!this.enabled) return;
-    try {
-      const ctx = this.getAudioContext();
-      if (!ctx) return;
-      notes.forEach((frequency, index) => {
-        const start = ctx.currentTime + index * spacing;
-        const oscillator = ctx.createOscillator();
-        const gain = ctx.createGain();
-        oscillator.type = type;
-        oscillator.frequency.setValueAtTime(frequency, start);
-        gain.gain.setValueAtTime(0.0001, start);
-        gain.gain.exponentialRampToValueAtTime(volume, start + 0.015);
-        gain.gain.exponentialRampToValueAtTime(0.0001, start + length);
-        oscillator.connect(gain);
-        gain.connect(ctx.destination);
-        oscillator.start(start);
-        oscillator.stop(start + length + 0.03);
-      });
-    } catch (error) {
-      console.warn('Audio tone sequence error', error);
-    }
+  tone(frequency, at, duration, gainValue = 0.12, type = 'sine') {
+    const ctx = this.getContext();
+    if (!ctx || !this.enabled) return;
+    const start = ctx.currentTime + at;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(frequency, start);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(gainValue, start + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(start);
+    osc.stop(start + duration + 0.02);
   }
 
   playPop() {
-    if (!this.enabled) return;
-    try {
-      const ctx = this.getAudioContext();
-      if (!ctx) return;
-      const now = ctx.currentTime;
-      const oscillator = ctx.createOscillator();
-      const gain = ctx.createGain();
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(260, now);
-      oscillator.frequency.exponentialRampToValueAtTime(920, now + 0.14);
-      gain.gain.setValueAtTime(0.22, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
-      oscillator.connect(gain);
-      gain.connect(ctx.destination);
-      oscillator.start(now);
-      oscillator.stop(now + 0.2);
-    } catch (error) {
-      console.warn('Audio playPop error', error);
-    }
+    this.tone(330, 0, 0.17, 0.1, 'sine');
+    this.tone(760, 0.04, 0.2, 0.09, 'triangle');
   }
 
   playRare() {
-    this.playToneSequence([440, 554.37, 659.25, 880], {
-      type: 'triangle',
-      volume: 0.2,
-      spacing: 0.075,
-      length: 0.32
-    });
+    [440, 554.37, 659.25, 880].forEach((frequency, index) => this.tone(frequency, index * 0.075, 0.32, 0.09, 'triangle'));
+    this.noiseBurst({ at: 0.12, duration: 0.32, gain: 0.035, frequency: 5200, q: 2.2, type: 'highpass' });
   }
 
   playLegendary() {
-    this.playToneSequence([523.25, 659.25, 783.99, 1046.5, 1318.51], {
-      type: 'sine',
-      volume: 0.24,
-      spacing: 0.09,
-      length: 0.42
-    });
-    window.setTimeout(() => this.playWhoosh(), 80);
+    [392, 523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((frequency, index) => this.tone(frequency, index * 0.09, 0.52, 0.105, index < 2 ? 'triangle' : 'sine'));
+    this.noiseBurst({ at: 0.08, duration: 0.7, gain: 0.055, frequency: 6200, q: 2.4, type: 'highpass' });
   }
 
   playCoin() {
-    this.playToneSequence([987.77, 1318.51], {
-      type: 'sine',
-      volume: 0.18,
-      spacing: 0.07,
-      length: 0.24
-    });
+    this.tone(987.77, 0, 0.2, 0.1, 'sine');
+    this.tone(1318.51, 0.08, 0.26, 0.11, 'sine');
   }
 }
 
