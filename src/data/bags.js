@@ -5,6 +5,7 @@ export const BAGS = [
     cost: 10,
     minLevel: 1,
     expGain: 10,
+    material: 'thin-plastic',
     desc: 'Chủ yếu rơi vật phẩm thường. Hơi nhàu rách nhưng bí ẩn!',
     ratesDesc: 'Common 80% | Rare 17% | Epic 3%',
     rates: { Common: 0.80, Rare: 0.17, Epic: 0.03, Legendary: 0.00 },
@@ -13,9 +14,9 @@ export const BAGS = [
     img: '/assets/garbage_bag_1785865795905.jpg',
     icon: '🗑️',
     color: 'linear-gradient(135deg, #334155 0%, #0f172a 100%)',
-    borderColor: '#64748b',
+    borderColor: '#7d8998',
     textColor: '#f8fafc',
-    badge: 'Tiết kiệm'
+    badge: 'Mỏng · Dễ xé'
   },
   {
     id: 'nylon_bag',
@@ -23,6 +24,7 @@ export const BAGS = [
     cost: 50,
     minLevel: 3,
     expGain: 50,
+    material: 'plastic',
     desc: 'Tỷ lệ vật phẩm hiếm cao hơn. Túi nilon nhiều màu vô tri!',
     ratesDesc: 'Common 40% | Rare 40% | Epic 18% | Legendary 2%',
     rates: { Common: 0.40, Rare: 0.40, Epic: 0.18, Legendary: 0.02 },
@@ -31,9 +33,9 @@ export const BAGS = [
     img: '/assets/shopping_bag_1785865829267.jpg',
     icon: '🛍️',
     color: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-    borderColor: '#38bdf8',
+    borderColor: '#31bfe9',
     textColor: '#ffffff',
-    badge: 'Mở khóa Lv.3'
+    badge: 'Dẻo · Kéo căng'
   },
   {
     id: 'rich_bag',
@@ -41,37 +43,36 @@ export const BAGS = [
     cost: 150,
     minLevel: 5,
     expGain: 150,
+    material: 'foil',
     desc: 'Cơ hội nhận vật phẩm Sử Thi và Huyền Thoại quý giá!',
     ratesDesc: 'Common 10% | Rare 35% | Epic 40% | Legendary 15%',
     rates: { Common: 0.10, Rare: 0.35, Epic: 0.40, Legendary: 0.15 },
     pityRareMax: 5,
     pityEpicMax: 12,
-    icon: '👑',
+    icon: '◆',
     color: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
-    borderColor: '#fbbf24',
+    borderColor: '#f4b743',
     textColor: '#ffffff',
-    badge: 'Mở khóa Lv.5'
+    badge: 'Màng kim loại'
   },
-
-  // --- SỰ KIỆN GIỚI HẠN ---
   {
     id: 'event_tet',
-    name: 'Túi Tết Thần Tài 🧧',
+    name: 'Túi Tết Thần Tài',
     cost: 200,
     minLevel: 1,
     expGain: 200,
+    material: 'paper',
     isEvent: true,
-    eventName: 'Sự Kiện Tết Thần Tài 🧧',
-    // Always active by checking date or custom flag
+    eventName: 'Sự Kiện Tết Thần Tài',
     desc: 'Túi sự kiện đỏ thắm may mắn! Tỷ lệ rơi Huyền Thoại cực cao!',
     ratesDesc: 'Common 5% | Rare 25% | Epic 45% | Legendary 25%',
     rates: { Common: 0.05, Rare: 0.25, Epic: 0.45, Legendary: 0.25 },
     pityRareMax: 4,
     pityEpicMax: 10,
-    icon: '🧧',
+    icon: '囍',
     color: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
-    borderColor: '#ef4444',
+    borderColor: '#ef5c4d',
     textColor: '#fef08a',
-    badge: 'TẾT THẦN TÀI 🧧'
+    badge: 'Giấy dày sự kiện'
   }
 ];
