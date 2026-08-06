@@ -1,4 +1,4 @@
-const CACHE_NAME = 'xe-tui-mu-v5-world-pack-catch-game';
+const CACHE_NAME = 'xe-tui-mu-v6-pink-plaid-motion';
 const CORE_ASSETS = ['/manifest.json', '/favicon.svg'];
 
 self.addEventListener('install', (event) => {
